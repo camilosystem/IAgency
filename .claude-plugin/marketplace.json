@@ -9,5 +9,6 @@
       "source": "./plugins/iagency-core",
       "description": "Equipo estándar de agentes de desarrollo, skills de proceso y guardarraíles de seguridad de IAgency."
     }
-  ]
+  ],
+  "description": "Estándar de equipo de IAgency: los agentes de desarrollo, las skills de proceso y los guardarraíles de seguridad que se comparten entre todos los proyectos."
 }

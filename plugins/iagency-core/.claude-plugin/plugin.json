@@ -7,8 +7,14 @@
     "name": "IAgency"
   },
   "license": "UNLICENSED",
-  "keywords": ["agentes", "erp", "wms", "crm", "bi", "autonomo"],
-  "agents": "./agents/",
+  "keywords": [
+    "agentes",
+    "erp",
+    "wms",
+    "crm",
+    "bi",
+    "autonomo"
+  ],
   "skills": "./skills/",
   "hooks": "./hooks/hooks.json",
   "defaultEnabled": true
