@@ -1,0 +1,24 @@
+# Nada de secretos en este repositorio, nunca.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+credentials
+srt-settings.local.json
+
+# Estado de ejecución de la fábrica
+/worktrees/
+/repos/
+/entregas/
+/estado/
+/logs/
+*.contador
+
+# Ruido del sistema
+.DS_Store
+Thumbs.db
+*.swp
+__pycache__/
+*.pyc

@@ -1,0 +1,83 @@
+# ESTRENO DE LA FÁBRICA — dinas-wms-sap-sync (monitor del sincronizador SAP)
+#
+# Esta es deliberadamente una cola MÍNIMA: dos agentes, una tarea real y pequeña.
+# El objetivo del estreno no es entregar rápido, es que veas cómo se comporta el
+# equipo y puedas leer la auditoría completa sin que te tome toda la tarde.
+#
+# La tarea elegida es el punto 2 del orden de riesgo que ya acordaste con el
+# arquitecto: el log en disco. Es código C# puro más pruebas — se compila y se
+# verifica en Linux sin necesidad de Windows.
+#
+# LÍMITE CONOCIDO: el monitor corre en producción como servicio de Windows. Los
+# agentes en el nodo Linux pueden compilar, probar y escribir el código, pero NO
+# pueden instalar ni verificar el servicio. Esa parte sigue siendo tuya, en la
+# máquina de Dinas. Si `dotnet build` falla en Linux por alguna referencia
+# específica de Windows, esa es la primera cosa que descubrirás — y es información
+# útil, no un fracaso del estreno.
+#
+# Antes de correr esto:
+#   1. clona el repo en /opt/iagency/repos/dinas-wms-sap-sync
+#   2. copia plantilla-proyecto/CLAUDE.md al repo y rellena lo que está entre <>
+#   3. copia plantilla-proyecto/.claude/settings.json al repo
+#   4. corre primero con --simular y lee lo que va a hacer
+
+tareas:
+  - id: E-001
+    agente: dev-backend
+    repo: dinas-wms-sap-sync
+    rama_base: main
+    modelo: sonnet
+    timeout: 5400
+    max_herramientas: 300
+    prompt: |
+      Implementa el log en disco del monitor.
+
+      Contexto: hoy el worker construye un buffer de log en memoria que se pierde al
+      cerrar el proceso. Serilog no está en el .csproj. Como el worker ahora corre
+      como servicio de Windows no hay consola, así que por debajo de nivel Warning no
+      queda ningún rastro si la pantalla está caída. Ese es el problema a resolver.
+
+      Alcance:
+      - Agrega Serilog con escritura a archivo y rotación diaria, con retención
+        acotada (no dejes que el disco crezca sin límite).
+      - El buffer en memoria que ya existe se MANTIENE: la pantalla lo sigue
+        consumiendo. El log en disco se suma, no lo reemplaza.
+      - La ruta del archivo y el nivel salen de configuración, con un valor por
+        defecto razonable relativo al content root. No la codifiques.
+      - Ningún secreto puede llegar al archivo: ni credenciales de SAP, ni tokens del
+        middleware, ni cadenas de conexión. Revisa qué se está logueando hoy antes de
+        escribir a disco, porque lo que era efímero en memoria ahora queda grabado.
+      - Pruebas: que escribe, que rota, que respeta el nivel configurado, y que un
+        valor sensible no aparece en el archivo.
+
+      Fuera de alcance: no toques la pantalla, no toques la autenticación, no toques
+      los scripts de instalación del servicio, no cambies el orden de arranque.
+
+      Ejecuta `dotnet build` y `dotnet test` y pega la salida real. La suite completa
+      (unos 100 tests) debe quedar en verde, no solo tus pruebas nuevas.
+
+  - id: E-002
+    agente: qa
+    repo: dinas-wms-sap-sync
+    depende_de: [E-001]
+    modelo: sonnet
+    max_herramientas: 250
+    prompt: |
+      Verifica el trabajo de E-001.
+
+      Además de los criterios declarados, comprueba específicamente:
+      - Que la suite completa pasa, no solo las pruebas nuevas. Cuenta los tests.
+      - Que no hay regresión en el buffer en memoria que consume la pantalla.
+      - Que ningún dato sensible llega al archivo de log. Búscalo de verdad en un
+        archivo generado, no confíes en la afirmación del autor.
+      - Qué pasa si la ruta del log no existe, si no hay permiso de escritura, o si
+        el disco está lleno. El worker no debe morir por no poder loguear.
+      - Que la rotación y la retención hacen lo que dicen.
+
+      Emite veredicto con evidencia real pegada. Si algo no pudiste ejecutar, dilo en
+      la sección "No verificado" en lugar de darlo por bueno.
+
+# --- Cuando el estreno salga bien, la siguiente tanda es el punto 3 del orden
+# --- de riesgo: las pruebas de auth (WebSessions, ProxyLoginClient,
+# --- ManualTriggerService), que hoy están verificadas solo por HTTP. Ahí ya tiene
+# --- sentido añadir `revisor` y `seguridad` a la cola.
