@@ -15,7 +15,5 @@
     "bi",
     "autonomo"
   ],
-  "skills": "./skills/",
-  "hooks": "./hooks/hooks.json",
   "defaultEnabled": true
 }
