@@ -1,0 +1,13 @@
+{
+  "name": "iagency",
+  "owner": {
+    "name": "IAgency"
+  },
+  "plugins": [
+    {
+      "name": "iagency-core",
+      "source": "./plugins/iagency-core",
+      "description": "Equipo estándar de agentes de desarrollo, skills de proceso y guardarraíles de seguridad de IAgency."
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+# Imagen de un agente de la fábrica IAgency.
+#
+# Principios:
+#   - usuario NO root (Claude Code se niega a correr sin permisos como root)
+#   - contenedor EFÍMERO: uno por tarea, se destruye al terminar. Cualquier
+#     persistencia maliciosa muere con él.
+#   - sin credenciales de larga vida dentro: ni ~/.ssh, ni credenciales de nube
+#   - todo el tráfico saliente por el proxy con allowlist
+#
+# Construir:
+#   docker build -t iagency/agente:1 -f Dockerfile.agente .
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0-noble
+
+ARG USUARIO=agente
+ARG UID=1001
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=es_ES.UTF-8 \
+    TZ=America/New_York
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      curl wget git jq ripgrep unzip ca-certificates locales \
+      python3 python3-pip python3-venv \
+      build-essential \
+ && sed -i '/es_ES.UTF-8/s/^# //g' /etc/locale.gen && locale-gen \
+ && curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+ && apt-get install -y nodejs \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g @anthropic-ai/claude-code
+
+RUN useradd -m -u ${UID} -s /bin/bash ${USUARIO} \
+ && mkdir -p /workspace /var/log/iagency /var/lib/iagency \
+ && chown -R ${USUARIO}:${USUARIO} /workspace /var/log/iagency /var/lib/iagency
+
+USER ${USUARIO}
+WORKDIR /workspace
+
+# Claude Code guarda configuración en ~/.claude Y en ~/.claude.json (fuera de esa
+# carpeta). Ambos deben existir antes del primer arranque para que el sandbox de
+# Linux pueda aplicarles permisos de escritura.
+RUN mkdir -p /home/${USUARIO}/.claude && echo '{}' > /home/${USUARIO}/.claude.json
+ENV CLAUDE_CONFIG_DIR=/home/${USUARIO}/.claude
+
+# Todo el tráfico saliente pasa por el proxy del nodo. Sin esto el contenedor no
+# tiene salida a internet: el cortafuegos del host deniega el resto.
+ENV HTTP_PROXY=http://172.20.0.1:3128 \
+    HTTPS_PROXY=http://172.20.0.1:3128 \
+    NO_PROXY=localhost,127.0.0.1,172.20.0.0/16 \
+    npm_config_proxy=http://172.20.0.1:3128 \
+    npm_config_https_proxy=http://172.20.0.1:3128
+
+ENV IAGENCY_WORKTREE=/workspace \
+    IAGENCY_ENTORNO=pruebas \
+    IAGENCY_MAX_HERRAMIENTAS=400 \
+    IAGENCY_AUDIT_LOG=/var/log/iagency/comandos.log \
+    IAGENCY_ESTADO=/var/lib/iagency
+
+CMD ["bash"]

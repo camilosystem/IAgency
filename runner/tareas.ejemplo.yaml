@@ -1,0 +1,104 @@
+# Cola de tareas de la fábrica IAgency.
+#
+# Reglas al escribir una cola:
+#   - un archivo, un dueño: dos tareas que tocan el mismo archivo se encadenan con
+#     `depende_de`, nunca corren a la vez
+#   - toda tarea de implementación tiene su tarea de verificación detrás
+#   - el prompt describe QUÉ, no CÓMO: el cómo lo pone el agente
+#   - si no existe la especificación, la primera tarea es escribirla
+
+tareas:
+  - id: T-001
+    agente: analista
+    repo: proyecto-cliente
+    rama_base: main
+    modelo: sonnet
+    prompt: |
+      Escribe la especificación de la funcionalidad "registro de devoluciones en
+      bodega". El bodeguero registra el producto que vuelve de una ruta, indica
+      motivo y estado (bueno, dañado, vencido), adjunta foto y firma del vendedor,
+      y el sistema decide la disposición del producto.
+      Fuentes: docs/reuniones/2026-09-02-devoluciones.md y el contrato openapi.yaml.
+      Entrega docs/specs/T-001-devoluciones.md siguiendo tu formato habitual, con
+      todas las preguntas abiertas separadas.
+    max_herramientas: 200
+
+  - id: T-002
+    agente: arquitecto
+    repo: proyecto-cliente
+    modelo: opus
+    depende_de: [T-001]
+    prompt: |
+      A partir de docs/specs/T-001-devoluciones.md, decide el diseño: entidades,
+      estados y transiciones, operaciones nuevas del contrato openapi.yaml, y el
+      efecto en inventario.
+      Entrega el ADR y el plan de implementación con la partición de archivos por
+      tarea, de forma que backend, frontend y datos no colisionen.
+    max_herramientas: 250
+
+  - id: T-003
+    agente: dev-datos
+    repo: proyecto-cliente
+    depende_de: [T-002]
+    prompt: |
+      Implementa el modelo de datos y las vistas del plan de T-002: migración
+      versionada con vuelta atrás y las vistas de consulta.
+      Verifica ejecutando contra la réplica de pruebas y pega los conteos.
+
+  - id: T-004
+    agente: dev-backend
+    repo: proyecto-cliente
+    depende_de: [T-002, T-003]
+    prompt: |
+      Implementa las operaciones de devoluciones contra el contrato actualizado en
+      T-002. Incluye pruebas por cada criterio de aceptación y por cada camino de
+      error. No toques archivos de interfaz.
+    timeout: 5400
+
+  - id: T-005
+    agente: dev-frontend
+    repo: proyecto-cliente
+    depende_de: [T-002]
+    prompt: |
+      Implementa la pantalla de registro de devoluciones para tableta de bodega,
+      según docs/diseno/ y el contrato. Todos los estados: cargando, vacío, error,
+      sin conexión, éxito. Textos en español neutro. No toques archivos de backend.
+
+  - id: T-006
+    agente: qa
+    repo: proyecto-cliente
+    depende_de: [T-004, T-005]
+    modelo: sonnet
+    prompt: |
+      Verifica la funcionalidad completa contra los criterios de aceptación de
+      docs/specs/T-001-devoluciones.md. Recorre además los casos límite de tu lista
+      y confirma idempotencia repitiendo el registro.
+      Emite veredicto con evidencia real.
+
+  - id: T-007
+    agente: revisor
+    repo: proyecto-cliente
+    depende_de: [T-004, T-005]
+    modelo: opus
+    prompt: |
+      Revisa el diff completo de la rama contra main. Emite veredicto.
+
+  - id: T-008
+    agente: seguridad
+    repo: proyecto-cliente
+    depende_de: [T-004]
+    modelo: opus
+    prompt: |
+      Audita el cambio: autorización por ruta y por vendedor, validación de la carga
+      de fotos, exposición de datos de cliente y dependencias nuevas.
+      Corre además la auditoría de la fábrica sobre esta sesión.
+
+  - id: T-009
+    agente: documentador
+    repo: proyecto-cliente
+    depende_de: [T-006, T-007]
+    modelo: haiku
+    prompt: |
+      Escribe el manual de usuario del registro de devoluciones para el bodeguero,
+      las notas de versión y el resumen para el PM.
+    max_herramientas: 150

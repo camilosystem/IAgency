@@ -1,0 +1,60 @@
+{
+  "_comentario": [
+    "Configuración de @anthropic-ai/sandbox-runtime para un agente de la fábrica.",
+    "En Linux el sandbox ELIMINA el namespace de red del proceso: no hay red que",
+    "filtrar, todo el tráfico sale por los proxies del runtime. Eso lo hace mucho más",
+    "difícil de esquivar que un cortafuegos.",
+    "",
+    "IMPORTANTE: lánzalo SIEMPRE con --settings apuntando a este archivo. Sin la",
+    "bandera explícita, si el archivo falla el runtime arranca igual con valores",
+    "internos y un arranque limpio NO prueba que tu configuración se cargó.",
+    "",
+    "Uso:",
+    "  npx @anthropic-ai/sandbox-runtime --settings /opt/iagency/infra/srt-settings.json claude"
+  ],
+
+  "network": {
+    "allowedDomains": [
+      "api.anthropic.com",
+      "claude.ai",
+      "platform.claude.com",
+      "github.com",
+      "codeload.github.com",
+      "*.githubusercontent.com",
+      "registry.npmjs.org",
+      "*.npmjs.org",
+      "api.nuget.org",
+      "*.nuget.org",
+      "pypi.org",
+      "files.pythonhosted.org",
+      "docs.claude.com",
+      "code.claude.com",
+      "learn.microsoft.com",
+      "developer.mozilla.org"
+    ],
+    "deniedDomains": [],
+    "allowLocalBinding": true
+  },
+
+  "filesystem": {
+    "allowRead": ["/workspace", "/tmp", "/usr", "/opt"],
+    "denyRead": [
+      "~/.ssh",
+      "~/.aws",
+      "~/.config/gcloud",
+      "~/.kube",
+      "~/.docker/config.json"
+    ],
+    "allowWrite": ["/workspace", "/tmp", "/var/log/iagency", "/var/lib/iagency"],
+    "denyWrite": [
+      ".env",
+      ".git/hooks",
+      ".git/config",
+      ".claude",
+      ".mcp.json",
+      ".devcontainer",
+      ".github/workflows"
+    ],
+    "allowGitConfig": false
+  }
+}
