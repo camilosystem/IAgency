@@ -13,6 +13,11 @@ set -uo pipefail
 BASE="${IAGENCY_BASE:-/opt/iagency}"
 ESPEJO="$BASE/auditoria/wms"
 
+# Credenciales y, sobre todo, GIT_TERMINAL_PROMPT=0: sin esto un repositorio
+# privado cuelga el script pidiendo un usuario por teclado.
+# shellcheck source=lib-git-credenciales.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-git-credenciales.sh"
+
 [ -d "$ESPEJO/dinas-wms-contracts" ] || {
   echo "No existe el espejo. Corre primero: bash $BASE/fabrica/infra/auditar-wms.sh"
   exit 1
