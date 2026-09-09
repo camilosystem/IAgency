@@ -47,6 +47,34 @@ CONSUMEN_CONTRATO=(
 
 mkdir -p "$ESPEJO" "$(dirname "$SALIDA")"
 
+# --------------------------------------------------------------------------
+# Credenciales
+# --------------------------------------------------------------------------
+# Si los repos son privados hace falta un token de solo lectura en GITHUB_TOKEN.
+# Se pasa por un askpass efímero para que NO quede escrito en el .git/config de
+# ningún clon: si mañana revocas el token, no queda ninguna copia olvidada.
+#
+# Sin token, el script no se cuelga esperando que alguien teclee: falla rápido y
+# marca el repo como no accesible.
+export GIT_TERMINAL_PROMPT=0
+
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  ASKPASS="$(mktemp)"
+  cat > "$ASKPASS" <<'EOS'
+#!/bin/sh
+case "$1" in
+  Username*) echo "x-access-token" ;;
+  Password*) echo "$GITHUB_TOKEN" ;;
+esac
+EOS
+  chmod 700 "$ASKPASS"
+  export GIT_ASKPASS="$ASKPASS"
+  trap 'rm -f "$ASKPASS"' EXIT
+  echo "Usando el token de GITHUB_TOKEN para los repositorios privados."
+else
+  echo "AVISO: sin GITHUB_TOKEN. Solo se podrán leer los repositorios públicos."
+fi
+
 echo "Auditando $((${#REPOS[@]})) repositorios de $ORG..."
 
 {
