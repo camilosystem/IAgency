@@ -142,6 +142,54 @@ copiarlo en los demás repositorios después del 2 de septiembre. Sigue pendient
 
 ---
 
+## Verificación del 9 de septiembre de 2026
+
+Ejecutada con `infra/verificar-congelamiento.sh` contra el servidor.
+
+**Cuatro en el congelamiento, tres avanzaron un commit, cero problemas.**
+
+| Referencia | Estado |
+|---|---|
+| `contracts` main | igual — `f65c5e8c9162` |
+| `middleware` main | igual — `ca97d206b097` |
+| `sap-sync` main | igual — `97627de894e5` |
+| `dashboard` `feat/dashboard-carrito-ventana-unica` | igual — `453c9b6f87fd` |
+| `app-sales` `feat/settings-backup` | avanzó 1 → `bdb3f9aa1412` |
+| `app-bodega` `feat/app-shortages` | avanzó 1 → `227840646ed6` |
+| `app-driver` `feat/app-payments` | avanzó 1 → `afb831d6cee2` |
+
+### DECISIÓN: los tres commits posteriores ENTRAN
+
+Los tres son el mismo cambio, del mismo día 28 de agosto:
+
+```
+fix(ui): quitar el velo del logo blanco en modo oscuro (derivada del imageset)
+```
+
+**Contexto que lo explica.** Al congelar quedó anotado que el PNG blanco traía un
+velo (alfa 12 sobre el 42 % del lienzo). El Dashboard lo había quitado en su
+derivada descartando alfa menor que 40 y dejó la receta en `docs/logo.md`; **el Mac
+no lo había quitado**, y por eso en modo oscuro el Home mostraba un recuadro gris
+tenue. Se registró entonces como "mismo defecto, mismo archivo, dos tratamientos por
+dos agentes que no se hablan", sin impacto en la demostración porque iba en claro.
+
+Estos tres commits son el agente del Mac cerrando ese pendiente, horas después de
+que se escribiera la lista.
+
+**Por qué entran:**
+
+- Corrigen un defecto conocido, documentado y ya resuelto del otro lado.
+- Son puramente cosméticos: no tocan lógica, contrato ni datos.
+- Los tres son el mismo cambio, coherentes entre sí.
+- Excluirlos significaría reintroducir a propósito un defecto ya corregido.
+
+Decidido el 9 de septiembre de 2026. Si alguien necesita reproducir exactamente la
+build de la demostración del 2 de septiembre, los hashes de la tabla de arriba
+siguen siendo la coordenada; esta decisión aplica a la **integración al tronco**,
+no a la reproducción histórica.
+
+---
+
 ## Cómo verificar que una rama sigue en el congelamiento
 
 Los tres `RECONSTRUIR.md` advierten: si la rama avanzó después del congelamiento,
