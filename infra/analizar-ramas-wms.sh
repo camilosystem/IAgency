@@ -27,6 +27,12 @@ IMAGEN="${IAGENCY_IMAGEN:-iagency/agente:1}"
 [ -d "$ESPEJO/dinas-wms-dashboard" ] || { echo "No existe el espejo. Corre primero: bash $FABRICA/infra/auditar-wms.sh"; exit 1; }
 
 mkdir -p "$SALIDA"
+# El contenedor corre como uid 1001 (agente), que no existe en el host. Sin esto,
+# el directorio queda con el dueño del host y el agente no puede escribir su
+# informe — y con --rm, el trabajo muere con el contenedor.
+# 777 es aceptable aquí: es un directorio de entregas en un nodo dedicado de un
+# solo usuario, no una ruta del sistema.
+chmod 777 "$SALIDA"
 
 # El área de trabajo del agente: el informe se escribe aquí, los repos se leen
 # desde el montaje de solo lectura.
@@ -133,13 +139,24 @@ Escribe `/workspace/ANALISIS-RAMAS.md` con:
   el dato completo.
 - Una sección **"No verificado"** con lo que no pudiste determinar y por qué.
 
+## ANTES DE EMPEZAR — comprueba que puedes escribir
+
+Lo primero, antes de cualquier análisis:
+
+    echo prueba > /workspace/.escritura && rm /workspace/.escritura && echo "puedo escribir"
+
+Si eso falla, **detente ahí mismo**. No hagas el análisis: este contenedor es
+efímero y todo lo que escribas fuera de `/workspace` se pierde al terminar.
+Reporta el error con la salida de `id` y `stat -c '%A %U:%G %n' /workspace`, y
+termina. Es mucho más barato que rehacer el trabajo.
+
 Reglas: solo lectura sobre `/repos`. Pega la salida real de los comandos que
 sustentan cada afirmación. Distingue siempre lo que verificaste de lo que
 infieres. Español neutro, sin voseo.
 PROMPT
 )" \
   --permission-mode dontAsk \
-  --allowedTools "Read,Glob,Grep,Write,Edit,Bash(git *),Bash(ls *),Bash(cat *),Bash(head *),Bash(tail *),Bash(wc *),Bash(sort *),Bash(uniq *),Bash(grep *),Bash(find *)" \
+  --allowedTools "Read,Glob,Grep,Write,Edit,Bash" \
   --verbose 2>&1 | tee "$SALIDA/registro-$(date +%Y%m%d-%H%M%S).log"
 
 echo
