@@ -34,9 +34,22 @@ denegar() {
 # ---------------------------------------------------------------------------
 # 1. Destrucción del sistema o del área de trabajo
 # ---------------------------------------------------------------------------
+# Ojo con el patrón: "rm -rf /" a secas hace match con "rm -rf /tmp/x", que es
+# una limpieza legítima. Se bloquea la raíz desnuda, el home, y los directorios
+# del sistema — no cualquier ruta absoluta.
+if printf '%s' "$CMD" | grep -Eq 'rm[[:space:]]+(-[a-zA-Z]*[rf][a-zA-Z]*[[:space:]]+)+(/|/\*|~|~/\*|\$HOME|\.)[[:space:]]*$'; then
+  denegar "Borrado de la raíz o del directorio personal bloqueado. Borra rutas concretas."
+fi
+# Directorios del sistema: se bloquean ellos y todo lo que cuelgue de ellos.
+if printf '%s' "$CMD" | grep -Eq 'rm[[:space:]]+-[a-zA-Z]*[rf][a-zA-Z]*[[:space:]]+/(etc|usr|var|bin|sbin|lib|lib64|boot|dev|sys|proc|root)(/|[[:space:]]|$)'; then
+  denegar "Borrado dentro de un directorio del sistema bloqueado."
+fi
+# Directorios de trabajo: se bloquea borrar el directorio raíz, pero NO lo que
+# cuelga de él — ahí viven los worktrees y los repos, y limpiarlos es legítimo.
+if printf '%s' "$CMD" | grep -Eq 'rm[[:space:]]+-[a-zA-Z]*[rf][a-zA-Z]*[[:space:]]+/(opt|home|srv|mnt|media)/?[[:space:]]*$'; then
+  denegar "Borrado de un directorio raíz de trabajo bloqueado. Borra la subcarpeta concreta."
+fi
 case "$CMD" in
-  *"rm -rf /"*|*"rm -fr /"*|*"rm -rf ~"*|*"rm -rf \$HOME"*)
-    denegar "Borrado masivo bloqueado. Si necesitas limpiar, borra rutas concretas dentro del worktree." ;;
   *"mkfs"*|*"dd if="*"of=/dev/"*|*":(){"*)
     denegar "Comando destructivo de disco o fork bomb bloqueado." ;;
   *"chmod -R 777"*|*"chown -R root"*)
