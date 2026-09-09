@@ -73,15 +73,23 @@ esac
 # ---------------------------------------------------------------------------
 # 3. Persistencia: la vía por la que un repositorio hostil sobrevive a la sesión
 # ---------------------------------------------------------------------------
-case "$CMD" in
-  *".git/hooks"*|*".claude/agents"*|*".claude/settings"*|*".mcp.json"*|*"crontab"*|*"systemctl enable"*)
-    case "$CMD" in
-      *cat*|*ls*|*grep*|*head*|*tail*|*diff*) : ;;  # leer está bien
-      *) denegar "Escritura sobre un punto de persistencia (hooks de git, .claude, .mcp.json, cron, systemd). Prohibido para agentes." ;;
-    esac ;;
-  *">>"*".bashrc"*|*">>"*".zshrc"*|*">>"*".profile"*|*">"*".bashrc"*)
-    denegar "No modifiques los archivos de arranque del shell." ;;
-esac
+# El criterio es si el comando ESCRIBE en esos puntos, no si los menciona.
+# Un script que contiene la cadena "systemctl enable" dentro de un heredoc es
+# trabajo legítimo; lo que no puede es ejecutarlo.
+
+# 3a. crontab y systemctl como comando ejecutado (al inicio o tras un separador)
+if printf '%s' "$CMD" | grep -Eq '(^|[;&|(]|&&|\|\|)[[:space:]]*(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)'; then
+  denegar "Un agente no programa tareas ni habilita servicios. Si el trabajo lo necesita, entrégalo como script para que lo ejecute un humano."
+fi
+
+# 3b. escritura sobre rutas de persistencia
+RUTAS_PERSIST='(\.git/hooks|\.git/config|\.claude/|\.mcp\.json|\.bashrc|\.zshrc|\.profile|\.bash_profile|authorized_keys)'
+if printf '%s' "$CMD" | grep -Eq "(>>?[[:space:]]*[^|;&]*$RUTAS_PERSIST)"; then
+  denegar "Redirección de escritura sobre un punto de persistencia. Prohibido para agentes."
+fi
+if printf '%s' "$CMD" | grep -Eq "(^|[;&|(]|&&|\|\|)[[:space:]]*(tee|sed[[:space:]]+-i|install|chmod|chown|ln)[[:space:]][^|;&]*$RUTAS_PERSIST"; then
+  denegar "Modificación de un punto de persistencia (hooks de git, .claude, .mcp.json, arranque del shell, claves SSH). Prohibido para agentes."
+fi
 
 # ---------------------------------------------------------------------------
 # 4. Secretos y credenciales

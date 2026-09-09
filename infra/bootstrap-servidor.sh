@@ -118,15 +118,20 @@ http_access allow CONNECT dominios_permitidos puertos_ssl
 http_access allow dominios_permitidos
 http_access deny all
 
-access_log /var/log/iagency/proxy.log
+access_log /var/log/squid/access.log squid
 cache deny all
 forwarded_for delete
 via off
-dns_v4_first on
 EOF
 
+mkdir -p /var/log/squid
+chown proxy:proxy /var/log/squid || true
+# Validar ANTES de arrancar: un error de sintaxis se ve en claro aquí, mientras
+# que al arrancar solo deja un "control process exited" que no dice nada.
+squid -k parse || { echo "Configuracion de Squid invalida. Revisa el error de arriba."; exit 1; }
 systemctl enable squid
 systemctl restart squid
+ln -sf /var/log/squid/access.log /var/log/iagency/proxy.log
 
 echo "==> 9/10  Cortafuegos"
 # El contenedor solo puede hablar con el proxy del host. Todo lo demás se corta.
