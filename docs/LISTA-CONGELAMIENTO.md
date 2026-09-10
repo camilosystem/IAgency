@@ -190,6 +190,43 @@ no a la reproducción histórica.
 
 ---
 
+## Movimientos posteriores — 9 y 10 de septiembre de 2026
+
+Para que nadie confunda estos avances con divergencia. **Ninguno toca código,
+contrato ni datos**: son documentación e higiene de repositorio. La tabla de hashes
+de arriba sigue siendo la coordenada para reproducir la build del 2 de septiembre.
+
+| Referencia | Congelamiento | Al 10-sep | Qué se agregó |
+|---|---|---|---|
+| `middleware` main | `ca97d206` | `dd1317a` | RECUPERACION.md y `catalog-images/` al .gitignore |
+| `dashboard` rama | `453c9b6f` | `f233ae1` | documentación de la página de recuperación |
+| `app-sales` rama | `488c6161` | `9f9926e` | velo del logo, más los tres documentos rescatados del Mac |
+| `app-bodega` rama | `eee11896` | `bb13269` | velo del logo, más `.gitignore` |
+| `app-driver` rama | `1ade7fe5` | `edbec8c` | velo del logo, más `.gitignore` |
+| `contracts` main | `f65c5e8c` | igual | — |
+| `sap-sync` main | `97627de8` | igual | — |
+
+### Lo que rescató la auditoría del Mac
+
+Tres documentos vivían únicamente en el disco del Mac y ahora están en
+`dinas-wms-app-sales/docs/`:
+
+- `checklist-verificacion-en-vivo.md` — el más valioso de los tres. Registra que
+  **dos de los arreglos de fecha solo divergen después de las 20:00 hora de Nueva
+  York**, que es cuando el día UTC se adelanta al de NY. Verificados por la mañana
+  pasan sin probar nada. Un agente de QA que verificara a las 10 a.m. habría
+  reportado verde con el defecto vivo.
+- `instrucciones-app-sales-pagos-creditos.md` — contra contrato v0.17.8.
+- `instrucciones-app-sales-payment-channel.md` — contra contrato v0.19.1. Contiene
+  una decisión y su reversa: la app **nunca** muestra ni envía `payment_channel`;
+  todo pago reportado desde la app es `VENDEDOR` del lado del middleware. Material
+  directo para los ADR del paso 6 del levantamiento.
+
+Los tres referencian versiones antiguas del contrato. Se commitearon tal cual: son
+documentos históricos y su valor está en registrar qué se decidió y cuándo.
+
+---
+
 ## Cómo verificar que una rama sigue en el congelamiento
 
 Los tres `RECONSTRUIR.md` advierten: si la rama avanzó después del congelamiento,
