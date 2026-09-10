@@ -96,6 +96,80 @@ tres se escriben:
 No hay cuarta opción. Una rama sin destino asignado es trabajo que dentro de tres
 meses nadie sabrá si importaba.
 
+### Ejecutado el 10 de septiembre de 2026
+
+**El tronco era madera muerta.** En cuatro repositorios `main` llevaba parado desde
+el 4 y el 12 de agosto, apuntando al contrato v0.36.0 (dashboard) y v0.29.0 (las
+tres apps), mientras el código real —el que corrió la demostración— vivía en una
+rama con el contrato v0.99.5. Un agente que clonara `main` habría construido contra
+un contrato de julio sin enterarse.
+
+Se llevó `main` hasta el tip de cada rama por fast-forward, con
+`infra/integrar-tronco-wms.sh`, que verifica tres cosas antes de empujar: que la
+rama contenga el commit del congelamiento, que sea avance limpio, y que el servidor
+confirme el resultado con `ls-remote`.
+
+| Repositorio | main antes | main después | Avance |
+|---|---|---|---|
+| `dinas-wms-dashboard` | `c7ea21e8` (12-ago) | `3fd0348` | 118 commits + 1 rescatado |
+| `dinas-wms-app-sales` | `726a507c` (4-ago) | `9f9926e` | 65 commits |
+| `dinas-wms-app-bodega` | `2564287e` (4-ago) | `bb13269` | 43 commits |
+| `dinas-wms-app-driver` | `50d1b70f` (4-ago) | `edbec8c` | 31 commits |
+
+Los cinco consumidores quedaron en el contrato **v0.99.5** sin tocar un solo
+submódulo: el puntero correcto ya venía dentro de los commits de la rama.
+
+**Los push los hizo el humano, no el nodo.** El token del nodo es de solo lectura y
+se dejó así a propósito: que una máquina desatendida no pueda escribir en los
+repositorios del cliente es el tercer anillo del aislamiento, no un descuido.
+Cambiarlo para ahorrar cuatro comandos habría desarmado esa garantía de forma
+permanente.
+
+#### Las dos ramas sueltas del dashboard
+
+- `feat/dashboard-cartera` — **descartada.** `git cherry` la marcó `-`, y la
+  comprobación directa lo confirmó: `main` ya tiene `.env.production` con la misma
+  URL, y en `.gitignore` está por delante. Integrarla habría retrocedido el
+  `.gitignore`.
+- `polish/cartera-visual` — **rescatada.** Ocho líneas de CSS (`flex-wrap` en cuatro
+  contenedores, `white-space: nowrap` en el importe) que evitan que la fila de
+  Cartera desborde en pantallas estrechas. No era fast-forward —`main` tenía 162
+  commits que la rama no conocía— así que fue cherry-pick, que aplicó limpio. El
+  mensaje del commit afirmaba "tests, tsc y build limpios", pero contra la base de
+  julio; se volvió a correr `npm run build` sobre la base nueva antes de empujar.
+
+Las dos se clavaron como tag antes de borrarse: `archivo/feat-dashboard-cartera` y
+`archivo/polish-cartera-visual`. El commit sobrevive y es recuperable; la lista de
+ramas deja de mentir.
+
+#### El barrido de las treinta y una ramas
+
+El planteamiento inicial de este paso solo contemplaba las dos ramas que la
+auditoría había señalado. El servidor tenía **treinta y una**. El barrido con
+`git cherry` sobre los ocho repositorios devolvió **cero commits con contenido
+propio en todas**, y `merge-base --is-ancestor` confirmó que las veintinueve
+restantes son ancestros de `main`: borrarlas no pierde nada, porque cada commit
+sigue alcanzable desde el tronco.
+
+Se borraron **veinticinco**. Se conservan **cuatro** —`feat/settings-backup`,
+`feat/app-shortages`, `feat/app-payments`, `feat/dashboard-carrito-ventana-unica`—
+porque los tres `RECONSTRUIR.md` las nombran textualmente como coordenada del
+congelamiento. Borrarlas hoy convertiría esos documentos en mentiras dentro del
+propio repositorio, que es peor que una rama de más. Se borran en el paso 7, cuando
+se reescriban esos archivos y el `CLAUDE.md` de cada repositorio, y las tres cosas
+queden coherentes a la vez.
+
+#### Lo que NO se cerró
+
+`dinas-wms-sql` sigue con su hueco: `main` en `4c4978d` del 6 de agosto, y **sin
+comprobar si ese repositorio refleja lo que de verdad está desplegado en SQL
+Server**. Eso no se resuelve con git; se resuelve mirando el servidor. Queda como
+la única brecha abierta del paso 3.
+
+Relacionado: `sap-sync` tiene sin trackear `Vistas WMS-DINAS/` —los `.sql` de las
+diez vistas `vw_WMS_` y su script de permisos— y falta decidir si es la copia
+autoritativa o un duplicado de `dinas-wms-sql`.
+
 ---
 
 ## Paso 4 — Extraer el contexto de cada conversación
@@ -253,12 +327,23 @@ concreto, los comandos de build y prueba, y lo que está fuera de límites.
 
 Las cinco condiciones, todas verificables:
 
-- [ ] La auditoría del servidor no reporta ningún rezagado sin explicación escrita.
-- [ ] Ninguna máquina local tiene commits sin empujar ni stashes sin destino.
+- [x] **La auditoría del servidor no reporta ningún rezagado sin explicación
+      escrita.** Cumplida el 10-sep-2026: los cinco consumidores en v0.99.5, blob
+      `239d026a`, y la sección 3 del informe (trabajo fuera del tronco) vacía.
+- [x] **Ninguna máquina local tiene commits sin empujar ni stashes sin destino.**
+      Cumplida el 10-sep-2026: Windows y Mac auditados, cero hallazgos en ambos.
+      Rescatados tres documentos que vivían solo en el disco del Mac.
 - [ ] Cada conversación de la lista está extraída o marcada como descartada.
 - [ ] `ESTADO-REAL.md` existe y sus contradicciones están todas resueltas o
       escaladas.
-- [ ] Los ocho repositorios tienen `CLAUDE.md`.
+- [ ] Los ocho repositorios tienen `CLAUDE.md`. **Al 10-sep-2026 hay tres**:
+      `app-sales`, `app-bodega`, `sap-sync`. `app-driver` no tiene ni `CLAUDE.md`,
+      ni `README`, ni `docs/` — un agente que lo clone hoy no encuentra una sola
+      línea que le diga qué es.
+
+**Una brecha abierta del paso 3:** falta comprobar si `dinas-wms-sql` refleja lo
+desplegado en SQL Server. No bloquea los pasos 4 a 7, pero sí bloquea cualquier
+tarea de `dev-datos`.
 
 Hasta que las cinco estén, la fábrica trabaja el WMS **con supervisión**. La
 autonomía desatendida se gana con este documento cerrado, no antes.
