@@ -1,7 +1,7 @@
 {
   "name": "iagency-core",
   "displayName": "IAgency — Equipo de desarrollo por agentes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Equipo estándar de agentes de desarrollo de IAgency: supervisor, analista, arquitecto, programadores, diseñador, QA, revisor, seguridad, devops y documentador, con las skills de proceso y los guardarraíles de seguridad.",
   "author": {
     "name": "IAgency"
