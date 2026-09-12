@@ -1,4 +1,4 @@
-# auditar-local.ps1 — Qué tienes sin empujar en esta máquina.
+﻿# auditar-local.ps1 — Qué tienes sin empujar en esta máquina.
 #
 # La auditoría del servidor no ve lo que vive solo en tu disco. Este script recorre
 # los repositorios del WMS que tengas localmente y reporta las tres formas de perder
@@ -43,7 +43,8 @@ Get-ChildItem -Path $Raiz -Directory | ForEach-Object {
 
     $rama     = (git rev-parse --abbrev-ref HEAD 2>$null)
     $sucio    = (git status --porcelain 2>$null)
-    $sinPush  = (git log --oneline "@{u}..HEAD" 2>$null)
+    $tieneUpstream = $null -ne (git rev-parse --abbrev-ref "@{u}" 2>$null)
+    $sinPush = if ($tieneUpstream) { git log --oneline "@{u}..HEAD" 2>$null } else { $null }
     $stashes  = (git stash list 2>$null)
     $subMal   = ""
     if (Test-Path (Join-Path $repo "contracts")) {
