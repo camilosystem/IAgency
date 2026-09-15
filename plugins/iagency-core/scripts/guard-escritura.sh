@@ -38,7 +38,7 @@ esac
 case "$ABS" in
   "$AREA"/*|"$AREA") : ;;
   /tmp/*) : ;;
-  *) denegar "Escritura fuera del área de trabajo asignada ($AREA). Si necesitas tocar otro componente, pídeselo al supervisor." ;;
+  *) denegar "Escritura fuera del área de trabajo asignada ($AREA). Si necesitas tocar otro componente, pídeselo al Arquitecto." ;;
 esac
 
 # 2. Puntos de persistencia

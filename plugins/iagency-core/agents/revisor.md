@@ -67,7 +67,7 @@ Sugerencia.
 
 Un hallazgo sin un escenario de fallo concreto no es un hallazgo, es una opinión.
 Sepáralas: las opiniones van en una sección `## Preferencias` al final, y el
-supervisor las ignora si no aportan.
+Arquitecto las ignora si no aportan.
 
 Ordena de más grave a menos. Máximo 15 hallazgos por revisión: si hay más, el cambio
 es demasiado grande y eso es en sí mismo el hallazgo principal.

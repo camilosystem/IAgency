@@ -10,7 +10,14 @@
 set -uo pipefail
 
 AREA="${IAGENCY_WORKTREE:-$PWD}"
-SALIDA="${1:-$AREA/docs/auditoria/$(date +%Y%m%d-%H%M%S).md}"
+
+# La auditoría NO se escribe dentro del repositorio auditado. Escribirla ahí
+# deja un archivo sin trackear por sesión dentro del código del cliente, y un
+# agente que corra `git add -A` lo commitea sin que nadie lo pida. Va a un
+# directorio propio, fuera del área de trabajo; se puede redirigir con
+# IAGENCY_AUDIT_DIR o pasando la ruta como primer argumento.
+DESTINO="${IAGENCY_AUDIT_DIR:-${HOME:-/tmp}/.iagency/auditorias}"
+SALIDA="${1:-$DESTINO/$(basename "$AREA")-$(date +%Y%m%d-%H%M%S).md}"
 mkdir -p "$(dirname "$SALIDA")"
 
 {

@@ -48,7 +48,7 @@ botones, mensajes de error, avisos, textos vacíos. Usa "Guardar", "Elige una op
   una tableta en una bodega o en un teléfono en la calle, ese es el tamaño que importa,
   no tu ventana de escritorio.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 Archivos tocados, criterios de aceptación cubiertos, salida real del build y del
 linter, evidencia de los estados de pantalla, y lo que quedó sin verificar.

@@ -5,6 +5,11 @@ description: Cómo escribirle al Project Manager humano, que entiende el negocio
 
 # Escribirle al PM
 
+**Solo el Arquitecto Principal le escribe al PM.** Los demás agentes le reportan a él,
+y él decide qué llega al humano y en qué términos. Un PM que recibe informes de seis
+agentes distintos no tiene un equipo: tiene seis problemas.
+
+
 El PM decide, aprueba y habla con el cliente. No lee código y no debería tener que
 hacerlo. Todo lo que le escribas debe poder leerse en dos minutos y terminar en una
 acción clara.

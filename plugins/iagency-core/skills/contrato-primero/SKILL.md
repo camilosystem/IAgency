@@ -3,6 +3,30 @@ name: contrato-primero
 description: Cómo definir, versionar, verificar y cambiar el contrato que une a los componentes de un sistema (OpenAPI, esquema de base de datos, mapeo de campos con un ERP). Úsalo antes de implementar cualquier cosa que cruce un límite entre componentes, y siempre que haya que modificar una interfaz que ya tiene consumidores.
 ---
 
+# La regla de oro: un proyecto, un contrato, un Arquitecto
+
+**El archivo del contrato lo redacta y lo modifica UNA sola autoridad: el Arquitecto
+Principal del proyecto. Ningún otro agente lo edita. Nunca. Por ningún motivo.**
+
+No lo edita para aplicar un cambio que el Arquitecto ya redactó, ni para "solo
+confirmar" algo acordado, ni para pegar un fragmento que el Arquitecto le pasó. Un
+agente de repositorio **señala** un vacío de contrato; no lo diseña ni lo aplica.
+
+El flujo, siempre igual: el Arquitecto redacta el archivo completo → el humano lo
+publica y lo etiqueta → cada agente lo **consume** desde su repositorio, anclado a una
+versión.
+
+La regla es estricta por experiencia. Cuando la autoridad se difumina aparecen tres
+formas de daño, y las tres ocurrieron en proyectos reales: un diff narrado pegado
+encima del contrato completo que lo dejó en 123 líneas de 7.249; una versión
+intermedia distribuida antes de estar cerrada; y el archivo suelto en un árbol de
+trabajo mientras el puntero versionado apuntaba a otra versión. En los tres casos el
+agente actuó de buena fe. **El mecanismo de edición directa fue la causa raíz, no la
+intención.**
+
+Corolario: pegar contenido no es verificable; traer un commit sí. Por eso el contrato
+se consume anclado a una etiqueta, no copiado a mano.
+
 # El contrato manda
 
 En todo proyecto de este equipo, la interfaz entre dos componentes se define **antes**

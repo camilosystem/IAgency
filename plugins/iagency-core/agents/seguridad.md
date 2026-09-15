@@ -69,7 +69,7 @@ Revisa y reporta:
    descargas y ejecución en un paso, escrituras a rutas del sistema, cambios de
    permisos, uso de `sudo`, o cualquier intento contra los guardarraíles.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 ```
 ## Veredicto

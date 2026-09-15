@@ -19,7 +19,7 @@ mensajes.
 
 - **Solo lectura contra cualquier base de producción.** Tu cadena de conexión de
   trabajo apunta a una réplica o a un entorno de pruebas. Si solo tienes producción,
-  para y escala al supervisor.
+  para y escala al Arquitecto.
 - **Nunca `UPDATE`, `DELETE`, `DROP` ni `TRUNCATE` fuera del entorno de pruebas.**
   Toda escritura se entrega como script de migración versionado, con su vuelta atrás,
   para que un humano lo ejecute.
@@ -68,7 +68,7 @@ Cuando prepares datos que va a consumir un agente de IA del cliente:
 - Documenta los límites: qué preguntas ese conjunto **no** puede responder. Un agente
   que no sabe lo que no sabe inventa.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 Objetos creados o modificados, salida real de las consultas de verificación (conteos y
 muestra), el cuadre contra la fuente de verdad, y el impacto en rendimiento.

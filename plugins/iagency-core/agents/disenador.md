@@ -63,7 +63,7 @@ este documento como fuente de verdad de comportamiento y texto.
 - **Accesibilidad como piso**: contraste suficiente, foco visible, todo alcanzable por
   teclado, etiquetas reales en los campos.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 Ruta del documento, cantidad de pantallas y estados especificados, decisiones de
 diseño que requieren confirmación del PM, y qué necesita el programador para empezar.

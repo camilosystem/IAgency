@@ -16,7 +16,7 @@ N=$(( $(cat "$CONT" 2>/dev/null || echo 0) + 1 ))
 echo "$N" > "$CONT"
 
 if [ "$N" -gt "$TECHO" ]; then
-  jq -nc --arg r "Presupuesto de la tarea agotado ($N llamadas de herramienta, techo $TECHO). Detente ahora: escribe el informe de entrega con estado BLOQUEADO, explica dónde te atascaste, y devuélvelo al supervisor. No sigas intentando." '{
+  jq -nc --arg r "Presupuesto de la tarea agotado ($N llamadas de herramienta, techo $TECHO). Detente ahora: escribe el informe de entrega con estado BLOQUEADO, explica dónde te atascaste, y devuélvelo al Arquitecto. No sigas intentando." '{
     decision: "block",
     reason: $r
   }'

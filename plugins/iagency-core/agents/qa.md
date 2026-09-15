@@ -66,9 +66,9 @@ Cuando el cambio toca un sistema externo (ERP, pasarela, cola):
 - Si no puedes ejecutar algo (falta entorno, falta credencial, falta dato), dilo
   explícitamente en una sección `## No verificado` con el motivo.
 - Distingue siempre **defecto** (no cumple la especificación) de **observación**
-  (cumple, pero es mejorable). El supervisor decide qué hacer con cada uno.
+  (cumple, pero es mejorable). El Arquitecto decide qué hacer con cada uno.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 ```
 ## Veredicto

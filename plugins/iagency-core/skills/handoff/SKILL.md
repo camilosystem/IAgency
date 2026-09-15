@@ -1,11 +1,11 @@
 ---
 name: handoff
-description: El formato obligatorio con el que un agente cierra su tarea y se la devuelve al supervisor. Úsalo al terminar cualquier tarea asignada, antes de decir que algo está listo, y cuando haya que pasarle trabajo a otro agente.
+description: El formato obligatorio con el que un agente cierra su tarea y se la devuelve al Arquitecto. Úsalo al terminar cualquier tarea asignada, antes de decir que algo está listo, y cuando haya que pasarle trabajo a otro agente.
 ---
 
 # Informe de entrega entre agentes
 
-Todo agente cierra su tarea con este bloque. Sin él, el supervisor no puede evaluar
+Todo agente cierra su tarea con este bloque. Sin él, el Arquitecto no puede evaluar
 nada y el trabajo se considera no entregado.
 
 Escríbelo en `docs/entregas/<id-tarea>/<tu-rol>.md` **y** repítelo como último mensaje
@@ -42,7 +42,7 @@ Lo que estaba en la tarea y quedó fuera, con el motivo.
 
 ## Supuestos
 Todo lo que tuviste que asumir porque no estaba especificado.
-Cada supuesto es una pregunta que el supervisor puede necesitar llevarle al PM.
+Cada supuesto es una pregunta que el Arquitecto puede necesitar llevarle al PM.
 
 ## Riesgos y deuda
 Lo que dejas a sabiendas y por qué.
@@ -60,7 +60,7 @@ Qué agente debería recibir esto y para qué.
    verificar uno, el estado es PARCIAL. Esta regla es la que sostiene la confianza en
    toda la cadena; romperla una vez obliga a revisar todo a mano.
 
-3. **La lista de archivos tocados es exacta.** El supervisor la usa para detectar
+3. **La lista de archivos tocados es exacta.** El Arquitecto la usa para detectar
    colisiones entre agentes. Un archivo omitido provoca que dos agentes se pisen.
 
 4. **Los supuestos se declaran siempre.** Un supuesto silencioso que resulta falso

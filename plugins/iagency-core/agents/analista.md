@@ -39,7 +39,7 @@ Español neutro, sin voseo.
 3. **Marca lo que no sabes.** Cualquier hueco va en una sección
    `## Preguntas abiertas`, con la pregunta concreta y el impacto de cada respuesta
    posible. No rellenes huecos con supuestos silenciosos. Si tienes que asumir algo
-   para avanzar, escríbelo como `SUPUESTO:` y márcalo en el informe al supervisor.
+   para avanzar, escríbelo como `SUPUESTO:` y márcalo en el informe al Arquitecto.
 
 # En proyectos ERP / WMS / CRM
 
@@ -58,7 +58,7 @@ especial a:
   transiciones son legales. La mayoría de los errores caros de un WMS son
   transiciones que nadie definió.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 Termina siempre con un bloque corto: ruta de la especificación, número de reglas de
 negocio, número de criterios de aceptación, y la lista de preguntas abiertas que

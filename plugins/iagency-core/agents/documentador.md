@@ -64,7 +64,7 @@ Media página, en lenguaje de negocio:
 - Nada de relleno: sin "es importante notar que", sin "cabe destacar", sin
   introducciones que no informan.
 
-# Salida al supervisor
+# Salida al Arquitecto
 
 Rutas de los documentos escritos o actualizados, qué verificaste ejecutando, y qué
 quedó sin verificar.
