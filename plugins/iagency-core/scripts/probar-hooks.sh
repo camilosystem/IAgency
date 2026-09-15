@@ -17,12 +17,20 @@
 # el modo de fallo era el peor posible — el guardarraíl no protegía Y empujaba el
 # trabajo por otra vía que tampoco miraba.
 #
-# QUÉ COMPRUEBA. Que cada hook se ejecuta de verdad, que devuelve algo que el
-# harness pueda leer, y que decide lo que debe decidir. No comprueba la lógica
-# completa de guard-bash.sh: para eso está probar-guard.sh con su batería de casos.
+# QUÉ COMPRUEBA. Solo que cada hook DISPARA: que se ejecuta de verdad en esta
+# máquina, que devuelve algo que el harness pueda parsear, y que no rompe el turno.
 #
-# USO. En cada máquina, después de instalar o actualizar el plugin:
-#     bash probar-hooks.sh
+# NO comprueba qué decide. Esa es la otra pregunta y vive en probar-guard.sh, que
+# corre la batería de casos con el veredicto esperado al lado de cada comando. Los
+# dos se corren juntos y ninguno sustituye al otro: este archivo puede salir entero
+# en verde con un guardarraíl que bloquea el trabajo legítimo o que deja pasar un
+# borrado de la raíz.
+#
+# USO. En cada máquina, después de instalar o actualizar el plugin, los dos:
+#
+#     bash probar-hooks.sh     # ¿dispara?
+#     bash probar-guard.sh     # ¿decide bien?
+#
 # Sin argumentos busca los scripts junto a sí mismo; con uno, en esa carpeta.
 
 set -uo pipefail
