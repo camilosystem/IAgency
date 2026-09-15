@@ -8,7 +8,7 @@ set -uo pipefail
 
 TAREA="${IAGENCY_TAREA:-sin-tarea}"
 TECHO="${IAGENCY_MAX_HERRAMIENTAS:-400}"
-DIR="${IAGENCY_ESTADO:-/var/lib/iagency}"
+DIR="${IAGENCY_ESTADO:-${HOME:-/tmp}/.iagency/estado}"
 CONT="$DIR/$TAREA.contador"
 
 mkdir -p "$DIR" 2>/dev/null || true

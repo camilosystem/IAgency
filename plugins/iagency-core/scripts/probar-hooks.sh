@@ -74,15 +74,21 @@ printf '%s\n' "Un comando inocente tiene que pasar"
 ENTRADA='{"tool_name":"Bash","tool_input":{"command":"git status"}}'
 SALIDA="$(printf '%s' "$ENTRADA" | bash "$DIR/guard-bash.sh" 2>&1)"
 CODIGO=$?
+# El criterio es la AUSENCIA de salida, no la presencia de un error conocido.
+# Buscar cadenas como "not found" solo caza los fallos que alguien anticipó: el
+# defecto de /var/log decía "No such file or directory" y se colaba por el hueco.
+# Un comando que pasa no imprime NADA — ni JSON, ni avisos, ni ruido del shell —
+# y cualquier byte que se escape contamina el JSON que el harness debe parsear.
 if [ $CODIGO -ne 0 ]; then
   rojo "guard-bash.sh salió con código $CODIGO — no llegó a evaluar nada"
   printf '        %s\n' "$SALIDA"
 elif printf '%s' "$SALIDA" | grep -q '"permissionDecision"[[:space:]]*:[[:space:]]*"deny"'; then
   rojo "guard-bash.sh DENEGÓ 'git status' — bloquearía el trabajo normal"
-elif printf '%s' "$SALIDA" | grep -qi 'not found\|permission denied\|syntax error\|no such file'; then
-  rojo "guard-bash.sh no se ejecutó: $SALIDA"
+elif [ -n "$SALIDA" ]; then
+  rojo "guard-bash.sh dejó salida cuando debía callar:"
+  printf '        %s\n' "$SALIDA"
 else
-  verde "'git status' pasa"
+  verde "'git status' pasa sin producir salida"
 fi
 
 # --- 3. Que un comando destructivo SE BLOQUEE --------------------------------
@@ -114,13 +120,15 @@ printf '\n%s\n' "El guardarraíl de escritura"
 ENTRADA='{"tool_name":"Write","tool_input":{"file_path":"/tmp/prueba-humo.txt","content":"hola"}}'
 SALIDA="$(printf '%s' "$ENTRADA" | bash "$DIR/guard-escritura.sh" 2>&1)"
 CODIGO=$?
+# Mismo criterio que arriba: una escritura corriente se aprueba en silencio.
 if [ $CODIGO -ne 0 ]; then
   rojo "guard-escritura.sh salió con código $CODIGO"
   printf '        %s\n' "$SALIDA"
-elif printf '%s' "$SALIDA" | grep -qi 'not found\|permission denied\|syntax error'; then
-  rojo "guard-escritura.sh no se ejecutó: $SALIDA"
+elif [ -n "$SALIDA" ]; then
+  rojo "guard-escritura.sh dejó salida cuando debía callar:"
+  printf '        %s\n' "$SALIDA"
 else
-  verde "una escritura corriente pasa"
+  verde "una escritura corriente pasa sin producir salida"
 fi
 
 # --- 6. Que los hooks de after no rompan el turno ----------------------------

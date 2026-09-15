@@ -7,13 +7,20 @@
 
 set -uo pipefail
 
+# Sin jq no se puede leer el evento ni construir la respuesta. Un control que no
+# puede comprobar nada NO aprueba: se detiene y dice por qué. En Windows con Git
+# Bash jq no viene de fábrica, y eso hacía que el guardarraíl dejara pasar TODO.
+if ! command -v jq >/dev/null 2>&1; then
+  printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Guardarrail inoperante: falta jq en esta maquina, asi que no puede evaluar nada. Se deniega por seguridad. Instalalo y reintenta: scoop install jq (Windows), brew install jq (Mac), apt install jq (Linux)."}}'
+  exit 0
+fi
+
 INPUT="$(cat)"
 RUTA="$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // ""')"
 AREA="${IAGENCY_WORKTREE:-$PWD}"
-LOG="${IAGENCY_AUDIT_LOG:-/var/log/iagency/escrituras.log}"
+LOG="${IAGENCY_AUDIT_LOG:-${IAGENCY_LOG_DIR:-${HOME:-/tmp}/.iagency/logs}/escrituras.log}"
 
-mkdir -p "$(dirname "$LOG")" 2>/dev/null || true
-printf '%s\t%s\t%s\n' "$(date -Is)" "${IAGENCY_TAREA:-sin-tarea}" "$RUTA" >> "$LOG" 2>/dev/null || true
+{ mkdir -p "$(dirname "$LOG")" && printf '%s\t%s\t%s\n' "$(date -Is)" "${IAGENCY_TAREA:-sin-tarea}" "$RUTA" >> "$LOG"; } 2>/dev/null || true
 
 denegar() {
   jq -nc --arg r "$1" '{
