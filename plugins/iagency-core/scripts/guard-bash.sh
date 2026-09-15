@@ -80,9 +80,30 @@ esac
 # ---------------------------------------------------------------------------
 # 3. Persistencia: la vía por la que un repositorio hostil sobrevive a la sesión
 # ---------------------------------------------------------------------------
-# El criterio es si el comando ESCRIBE en esos puntos, no si los menciona.
-# Un script que contiene la cadena "systemctl enable" dentro de un heredoc es
-# trabajo legítimo; lo que no puede es ejecutarlo.
+# Las dos reglas de esta sección cortan con criterios DISTINTOS. No las leas como
+# una sola, porque no lo son:
+#
+#   3a NO distingue lectura de escritura, y es a propósito. Bloquea CUALQUIER
+#      invocación de crontab en posición de comando —incluida `crontab -l`, que solo
+#      lee— y systemctl enable/disable/mask. Separar aquí lectura de escritura
+#      obligaría a interpretar banderas, y una bandera mal entendida deja pasar una
+#      escritura. Un agente no tiene por qué consultar el crontab; si lo necesita,
+#      lo pide. `systemctl status` sí pasa: no está en la lista.
+#
+#   3b sí es un criterio de escritura: bloquea las redirecciones y los comandos que
+#      modifican las rutas de persistencia, y deja pasar leerlas. `cat ~/.bashrc`
+#      pasa; la misma ruta con una redirección de anexado, no.
+#
+# Lo que las dos comparten es que miran la POSICIÓN, no la mera aparición del texto:
+# `echo "crontab -l" > notas.txt` pasa, porque ahí la cadena es un argumento.
+#
+# PERO ojo con el alcance de esa afirmación, porque tiene un hueco medido: grep
+# evalúa LÍNEA A LÍNEA, así que el ancla `^` es el principio de CADA línea, no del
+# comando. Un heredoc cuya línea empiece por `systemctl enable` se bloquea aunque
+# solo se esté escribiendo un archivo para que lo ejecute un humano después. Es un
+# falso positivo conocido y se acepta: el error cae del lado seguro, y la salida se
+# consigue igual escribiendo esa línea de otra forma. No aflojes el ancla sin
+# sustituirla por algo que distinga de verdad escribir un texto de ejecutarlo.
 
 # 3a. crontab y systemctl como comando ejecutado (al inicio o tras un separador)
 if printf '%s' "$CMD" | grep -Eq '(^|[;&|(]|&&|\|\|)[[:space:]]*(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)'; then

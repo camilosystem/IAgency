@@ -16,6 +16,10 @@ Una condición válida cumple tres cosas:
 2. **Tiene un resultado esperado concreto**, no un adjetivo.
 3. **Otra persona (u otro agente) puede comprobarla** sin preguntarte nada.
 
+En una tarea de documentación no hay software que ejecutar y la regla 1 se degrada
+sola. Cómo se sostiene ahí: *Tareas de documentación*, más abajo. No escribas
+condiciones de documentación sin leer esa sección.
+
 | Mal | Bien |
 |---|---|
 | El módulo funciona correctamente | `dotnet test --filter Categoria=Devoluciones` pasa las 14 pruebas |
@@ -23,6 +27,51 @@ Una condición válida cumple tres cosas:
 | El reporte está cuadrado | El total de ventas del reporte coincide con `SELECT SUM(...)` del ERP para el mes de agosto, diferencia 0 |
 | Es rápido | La consulta responde en menos de 2 s con los 1,4 M de filas de la réplica |
 | Es seguro | Un usuario del rol Vendedor recibe 403 al pedir `/api/pedidos/{id}` de otra ruta; evidencia: salida de la petición |
+
+# Tareas de documentación: la condición se invierte
+
+En una tarea de documentación no hay nada que ejecutar, así que la condición se
+degrada sola a la forma *"el documento recoge X"* — y eso se comprueba leyendo la
+frase que lo afirma. Eso no es verificar: es encontrar lo que ya se sabía que estaba.
+El resultado es un falso verde, y ya ocurrió: se aprobó "no hay contradicción en el
+documento" tras leer solo la frase de encabezado de la sección. La contradicción
+estaba cuatro líneas más abajo.
+
+El principio que lo corrige:
+
+> **Una condición de coherencia NO se verifica encontrando la frase que la afirma,
+> sino buscando la frase que la contradice.**
+
+Por eso la condición debe nombrar **qué contradicción hay que cazar y dónde**, no qué
+afirmación hay que encontrar. Se da por cumplida cuando la búsqueda se hizo completa y
+volvió vacía; la evidencia es el barrido, no la cita.
+
+| Mal — busca la afirmación | Bien — caza la contradicción |
+|---|---|
+| El documento no se contradice sobre el alcance | Ninguna de las 9 apariciones de "alcance" en el archivo nombra un módulo fuera de los 3 de la sección 1; evidencia: salida completa de `grep -n alcance` |
+| La guía dice que el proceso tiene 4 pasos | Ninguna sección posterior enumera un quinto paso ni renumera los 4; evidencia: salida completa de `grep -nE 'paso [0-9]'` |
+| Los ejemplos están en español neutro | Cero apariciones de voseo en todo el archivo; evidencia: `grep -nE '(^\|[^[:alnum:]])(hacé\|revisá\|verificá\|elegí\|tenés\|podés)([^[:alnum:]áéíóúñ]\|$)'` vacío, descontadas las citas que enseñan qué no escribir |
+| La versión del contrato está actualizada | No queda mención de la versión anterior ni en este archivo ni en los que lo citan; evidencia: `grep -rn` de la versión vieja, vacío |
+| El comentario del script explica la regla | Ninguna línea de comentario describe un criterio distinto del que aplica el código de al lado; evidencia: cada bloque de comentario contrastado contra su regla, uno por uno |
+
+Reglas de la búsqueda:
+
+- **El alcance es el archivo entero, no la sección.** El falso verde típico es leer el
+  encabezado y aprobar. El encabezado casi siempre dice lo correcto; el desmentido
+  vive más abajo, donde ya nadie mira.
+- **Sí hay algo que ejecutar: la búsqueda.** Un `grep` con su patrón y su salida
+  pegada es evidencia ejecutable y otro agente la reproduce. "Lo leí y está bien" no
+  lo es, y no cuenta como criterio cumplido.
+- **Una búsqueda vacía solo vale si el patrón podía encontrar algo.** Antes de creerle
+  al vacío, comprueba que el mismo patrón encuentra un caso que sí existe. Un patrón
+  mal escrito y un documento limpio se ven idénticos. El error clásico en español:
+  `\b` no cierra palabra después de una vocal acentuada, así que `\bverificá\b` marca
+  "verificándolo" y el barrido se llena de ruido en el que el hallazgo real se pierde.
+- **Descuenta las citas que enseñan qué no escribir.** Un documento de doctrina
+  contiene a propósito los ejemplos malos que prohíbe; el patrón va a encontrarlos.
+  Eso no es un hallazgo — pero decidirlo exige mirar cada línea, no el número total.
+- **Quien verifica no es quien escribió el documento.** Y no es `qa`: estas tareas van
+  al `revisor`.
 
 # Piso mínimo de toda entrega de código
 

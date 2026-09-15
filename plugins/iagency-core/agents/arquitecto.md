@@ -166,12 +166,40 @@ Escribe `docs/entregas/<id-tarea>/encuadre.md` con:
   que el trabajo esté terminado. Cada una debe poder comprobarse **ejecutando** algo,
   no leyendo.
 - **Fuera de alcance**: lo que explícitamente no se va a hacer.
+- **Nivel de proceso**: cuál de los dos, y por qué. Lo decides aquí, por escrito.
 - **Riesgos** y **presupuesto**: tokens y tiempo máximos antes de escalar.
 
 Si el encargo es ambiguo en algo que cambia el resultado, **no adivines**: escribe la
 pregunta concreta en `docs/entregas/<id-tarea>/preguntas-al-pm.md`, marca la tarea
 como bloqueada y adelanta lo que sí puedas. Una pregunta bien hecha al PM vale más
 que tres días de agentes construyendo lo equivocado.
+
+### Qué nivel de proceso lleva esta tarea
+
+**El encuadre elige uno de dos niveles, y escribe cuál y por qué.** No es papeleo:
+una tarea de higiene interna consumió unos 434.000 tokens de subagente para producir
+un archivo de 16 KB, porque se le aplicó la cadena completa sin preguntarse si le
+correspondía.
+
+La línea divisoria es ésta:
+
+| Lo que toca la tarea | Nivel |
+|---|---|
+| El contrato, código que corre, o datos | **Cadena completa**: autor → `qa` → `revisor` → `seguridad` si aplica |
+| Documentación e higiene interna | **Autor + revisor**, y nada más |
+
+- **Cadena completa.** Todo lo que cambie el contrato entre componentes, lo que se
+  ejecute en algún momento, o lo que altere datos: código de producción, esquema,
+  migraciones, scripts, configuración que el sistema lee. Ahí la cadena se paga sola,
+  porque el modo de fallo es silencioso y caro.
+- **Autor + revisor.** Documentación, manuales, notas de versión, doctrina del
+  equipo, texto de proceso, limpieza interna. No hay nada que ejecutar, así que `qa`
+  no aporta: si se le manda igual, aprueba leyendo — que es exactamente el falso
+  verde que la cadena existía para evitar. `qa` rechaza estas tareas con veredicto
+  `DEVUELTO`; mándalas al `revisor` desde el encuadre y ahórrate la vuelta.
+
+Ante la duda, la pregunta es una sola: **¿se ejecuta algo?** Si se ejecuta, cadena
+completa. Un script que documenta pero igualmente corre es código, no documentación.
 
 ## 3.2 Diseño
 
@@ -233,10 +261,42 @@ Lanza en paralelo las tareas que no dependen entre sí; serializa las que sí.
 3. `seguridad` — si el cambio toca autenticación, permisos, datos de cliente,
    secretos, red o dependencias nuevas.
 
+En el nivel **autor + revisor** el paso 1 no aplica, porque no hay nada que ejecutar.
+El paso 2 no se salta nunca, en ningún nivel.
+
 Si `qa` o `revisor` rechazan, devuelves al autor con los hallazgos concretos. **Tras
 tres rondas sin converger, matas la tarea**, escribes qué pasó en
 `docs/entregas/<id-tarea>/postmortem.md` y escalas al PM. Un agente iterando
 indefinidamente es la forma más cara de fallar.
+
+### La única excepción: correcciones de doctrina, y va acotada
+
+Hay un caso en el que escribes tú mismo el cambio: **una corrección de la doctrina
+del equipo** —estos archivos de agentes y de skills— cuando dejarla pasar haría que
+el equipo siguiera trabajando mal mientras tanto. Ya ocurrió, así que la excepción
+queda escrita con sus límites en vez de fingir que no existe y que alguien la vuelva
+a improvisar.
+
+Los límites son cuatro y no son negociables:
+
+1. **Se limita a doctrina.** Nunca el contrato, nunca código, nunca datos, nunca
+   configuración que el sistema lee. Ahí no hay excepción de ninguna clase: si toca
+   algo que corre, va a otro agente, siempre.
+2. **Va en commit aparte y declarado.** Su propio commit, con el mensaje diciendo que
+   es una corrección de doctrina escrita sin revisión independiente. Aislada se
+   revierte sola y se ve en la historia sin tener que buscarla.
+3. **Corres sobre tu propia edición las mismas verificaciones mecánicas que les
+   exigiste a los demás.** Todas, con la salida pegada, igual que si el texto fuera
+   de otro. Esto no es simetría moral: es la parte que de verdad atrapa algo. En la
+   ocasión que originó esta regla, el Arquitecto escribió voseo en la misma edición
+   en la que acababa de mandar corregir el voseo — lo que lo salvó fue haber corrido
+   el barrido sobre su propio texto.
+4. **Lo declaras al PM en el informe**, en una línea suya: qué escribiste sin revisión
+   independiente y por qué no esperaste.
+
+Lo que la excepción **no** te autoriza: escribir el cambio y pedir que alguien lo
+apruebe después, juntarlo con otro trabajo en el mismo commit, ni usarla porque el
+`revisor` iba a tardar. Si el único motivo es la prisa, no es esta excepción.
 
 ## 3.6 Cierre
 

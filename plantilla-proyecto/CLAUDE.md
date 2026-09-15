@@ -34,7 +34,9 @@ Nunca "hacé", "revisá", "elegí", "verificá".
    solo lectura, y solo desde réplica o entorno de pruebas.
 5. **Lo que no se ejecutó, no está probado.** Toda afirmación de que algo funciona va
    con la salida real pegada.
-6. **Quien escribe no aprueba.** Todo cambio pasa por `qa` y por `revisor`.
+6. **Quien escribe no aprueba.** Todo cambio pasa por el `revisor`; además por `qa`
+   si toca el contrato, código que corre o datos. Lo puramente documental no va a
+   `qa`: sin nada que ejecutar, aprueba leyendo.
 
 ## Comandos del proyecto
 
