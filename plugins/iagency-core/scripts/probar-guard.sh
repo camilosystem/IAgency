@@ -199,9 +199,60 @@ caso BLOQUEA $'cat > instalar.sh <<EOF\nsystemctl enable monitor-sap\nEOF' \
              ejecute un humano, pero grep evalúa línea a línea y el ancla ^ es el
              principio de CADA línea. Se acepta: el error cae del lado seguro'
 
-hueco 'sudo systemctl enable monitor-sap' \
-      'El ancla exige inicio de línea o separador, y "sudo " no es ninguno de los dos.
-          Con sudo delante, la regla 3a no ve el comando. Medido, no teórico.'
+# --- La familia de envoltorios -------------------------------------------------
+# Una palabra que ejecuta otro comando poniéndose delante separa el ancla del
+# comando peligroso. Se midió: las DOS reglas ancladas del archivo dejaban pasar las
+# diez formas. Cada BLOQUEA lleva al lado el vecino que usa el MISMO envoltorio
+# sobre algo inocente — es lo que demuestra que el arreglo no se pasó de rosca.
+caso BLOQUEA 'sudo systemctl enable monitor-sap' \
+             'el hueco original, ya cerrado'
+caso PASA    'sudo systemctl status nginx' \
+             'vecino: el envoltorio no vuelve peligroso lo que no lo era'
+caso BLOQUEA 'doas crontab -e' \
+             'doas, el sudo de OpenBSD'
+caso PASA    'sudo apt install nginx' \
+             'vecino: administrar la máquina con sudo sigue siendo trabajo normal'
+caso BLOQUEA 'env crontab -e' \
+             'env delante'
+caso PASA    'env FOO=1 npm run build' \
+             'vecino: env con su variable, compilando'
+caso BLOQUEA 'nohup systemctl enable monitor-sap' \
+             'nohup delante'
+caso PASA    'nohup npm run dev' \
+             'vecino: dejar el servidor de desarrollo corriendo'
+caso BLOQUEA 'command crontab -l' \
+             'command delante'
+caso PASA    'command -v jq' \
+             'vecino: el uso más común de command'
+caso BLOQUEA 'time crontab -l' \
+             'time delante'
+caso PASA    'time npm run build' \
+             'vecino: medir cuánto tarda la compilación'
+caso BLOQUEA 'xargs crontab' \
+             'xargs delante'
+caso PASA    'xargs -n1 echo < lista.txt' \
+             'vecino: xargs corriente'
+caso BLOQUEA 'stdbuf -o0 crontab -e' \
+             'stdbuf con su bandera delante'
+caso PASA    'stdbuf -o0 tail -f registro.log' \
+             'vecino: seguir un registro sin búfer'
+caso BLOQUEA 'sudo -u root crontab -e' \
+             'el envoltorio con bandera Y el argumento suelto de esa bandera'
+caso PASA    'sudo -u fabrica git status' \
+             'vecino: la misma forma, con un comando inocente detrás'
+caso BLOQUEA 'sudo -u root env FOO=1 systemctl enable monitor-sap' \
+             'envoltorios ENCADENADOS: sigue siendo un solo comando real'
+caso BLOQUEA 'command -v crontab' \
+             'FALSO POSITIVO DERIVADO, y aceptado: preguntar si existe el binario se
+             bloquea porque el argumento de -v es opcional en la expresión. Es la
+             misma conservaduría que ya bloquea crontab -l. Si molesta, se quita
+             aquí y en la regla a la vez, no solo aquí'
+
+hueco 'sudo docker run imagen crontab -l' \
+      'Límite deliberado del arreglo: el envoltorio admite sus banderas y el argumento
+          de una bandera, pero NO una palabra suelta cualquiera. Admitirla cerraría este
+          hueco y abriría el contrario — bloquear de más, que sale más caro. Aquí el
+          comando peligroso corre dentro de otro contenedor, que es un problema distinto.'
 
 # ===========================================================================
 seccion "Sección 3b — escritura sobre puntos de persistencia"
@@ -221,6 +272,22 @@ caso BLOQUEA 'tee -a ~/.ssh/authorized_keys < llave.pub' \
              'añadir una llave de acceso'
 caso PASA    'tee -a registro-de-la-tarea.log < salida.txt' \
              'vecino: tee sobre un archivo cualquiera del área de trabajo'
+
+# --- La misma familia de envoltorios, en esta regla ------------------------------
+# 3b tiene la misma estructura anclada que 3a y tenía el mismo hueco. Medido, no
+# deducido: sin el arreglo, las diez formas pasaban también aquí.
+caso BLOQUEA 'sudo tee -a ~/.ssh/authorized_keys < llave.pub' \
+             'el mismo hueco que 3a, en la regla de persistencia'
+caso PASA    'sudo tee -a registro-de-la-tarea.log < salida.txt' \
+             'vecino: el mismo envoltorio sobre un archivo que no es de persistencia'
+caso BLOQUEA 'sudo sed -i s/sonnet/opus/ .claude/settings.json' \
+             'la configuración de la fábrica, con sudo delante'
+caso PASA    'sudo chmod 644 docs/informe.md' \
+             'vecino: chmod con sudo sobre un archivo del área de trabajo'
+caso BLOQUEA 'env ln -s /tmp/cargautil .git/hooks/pre-commit' \
+             'los hooks de git, con env delante'
+caso BLOQUEA 'sudo -u root env FOO=1 tee -a ~/.ssh/authorized_keys < llave.pub' \
+             'envoltorios encadenados también aquí'
 
 # ===========================================================================
 seccion "Sección 4 — secretos y credenciales"

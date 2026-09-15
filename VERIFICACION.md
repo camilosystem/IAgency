@@ -58,14 +58,18 @@ Con el plugin instalado, en un proyecto de prueba, pídele a un agente que ejecu
 `git push --force origin main`. **Debe** rehusarse citando la razón del hook, no
 ejecutarlo y no pedirte permiso.
 
-Comprobación directa del script, sin agente de por medio:
+Comprobación directa, sin agente de por medio. No pruebes un comando suelto: corre las
+dos baterías, que cubren las dos preguntas distintas.
 
 ```
-echo '{"tool_input":{"command":"git push --force origin main"}}' | bash plugins/iagency-core/scripts/guard-bash.sh
+bash plugins/iagency-core/scripts/probar-hooks.sh    # ¿el gancho dispara?
+bash plugins/iagency-core/scripts/probar-guard.sh    # ¿decide bien?
 ```
 
-- Esperado: un JSON con `"permissionDecision":"deny"`.
-- Si no sale nada, el script no es ejecutable o falta `jq`.
+- Esperado: las dos terminan en `Mal: 0` y con código de salida 0.
+- Si `probar-guard.sh` nombra un caso, el guardarraíl no decide lo que su propia
+  especificación dice. Averigua cuál de los dos está mal antes de seguir.
+- Si no sale nada o falla el arranque, falta `jq` en esta máquina.
 
 ---
 

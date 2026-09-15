@@ -105,8 +105,35 @@ esac
 # consigue igual escribiendo esa línea de otra forma. No aflojes el ancla sin
 # sustituirla por algo que distinga de verdad escribir un texto de ejecutarlo.
 
-# 3a. crontab y systemctl como comando ejecutado (al inicio o tras un separador)
-if printf '%s' "$CMD" | grep -Eq '(^|[;&|(]|&&|\|\|)[[:space:]]*(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)'; then
+# El ancla de posición de comando: principio de la cadena, o justo tras un separador.
+INICIO='(^|[;&|(]|&&|\|\|)[[:space:]]*'
+
+# El ancla sola NO basta, y esto está medido, no razonado: `sudo systemctl enable x`
+# pasaba, y con él las otras diez formas de la misma familia, en las DOS reglas
+# ancladas de este archivo.
+#
+# El envoltorio no es una particularidad de sudo. Es cualquier palabra que ejecuta
+# otro comando poniéndose delante: mete una palabra entre el ancla y el comando
+# peligroso, y la regla deja de verlo. Arreglar solo sudo mueve el hueco de sitio en
+# vez de cerrarlo, así que se cierra por familia.
+#
+# Si aparece un envoltorio nuevo, se agrega AQUÍ y las dos reglas quedan cubiertas.
+# Esa es la razón de que esto sea una variable compartida y no una copia en cada una.
+ENVOLTORIOS='sudo|doas|nohup|command|timeout|time|xargs|stdbuf|setsid|ionice|nice|unbuffer|busybox|env'
+
+# Cada envoltorio puede traer sus propias banderas (`sudo -u root`) y sus variables
+# de entorno (`env FOO=1`), y pueden encadenarse: `sudo -u root env FOO=1 systemctl
+# enable x` es UN solo comando real, no tres.
+#
+# Se admite el argumento suelto que sigue a una bandera, pero NO una palabra suelta
+# cualquiera. La diferencia importa: admitir cualquier palabra convertiría
+# `sudo docker run imagen crontab` en un bloqueo, y a partir de ahí la regla empezaría
+# a estorbar trabajo legítimo, que es el modo de fallo caro.
+ARG_ENVOLTORIO='-[^[:space:];&|()]*([[:space:]]+[^-[:space:];&|()][^[:space:];&|()]*)?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|()]*'
+ENVOLTURA="((${ENVOLTORIOS})([[:space:]]+(${ARG_ENVOLTORIO}))*[[:space:]]+)*"
+
+# 3a. crontab y systemctl como comando ejecutado, con o sin envoltorio delante
+if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)"; then
   denegar "Un agente no programa tareas ni habilita servicios. Si el trabajo lo necesita, entrégalo como script para que lo ejecute un humano."
 fi
 
@@ -115,7 +142,9 @@ RUTAS_PERSIST='(\.git/hooks|\.git/config|\.claude/|\.mcp\.json|\.bashrc|\.zshrc|
 if printf '%s' "$CMD" | grep -Eq "(>>?[[:space:]]*[^|;&]*$RUTAS_PERSIST)"; then
   denegar "Redirección de escritura sobre un punto de persistencia. Prohibido para agentes."
 fi
-if printf '%s' "$CMD" | grep -Eq "(^|[;&|(]|&&|\|\|)[[:space:]]*(tee|sed[[:space:]]+-i|install|chmod|chown|ln)[[:space:]][^|;&]*$RUTAS_PERSIST"; then
+# Misma familia de envoltorios que en 3a, misma variable: si se agrega uno allí,
+# esta regla queda cubierta sin tocarla.
+if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(tee|sed[[:space:]]+-i|install|chmod|chown|ln)[[:space:]][^|;&]*$RUTAS_PERSIST"; then
   denegar "Modificación de un punto de persistencia (hooks de git, .claude, .mcp.json, arranque del shell, claves SSH). Prohibido para agentes."
 fi
 
