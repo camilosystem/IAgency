@@ -160,6 +160,68 @@ else
   verde "presupuesto.sh se ejecuta sin fallar"
 fi
 
+# --- 6b. Lo que el presupuesto DECIDE, en sus dos modos ------------------------
+# Hasta la 1.4.0 esta prueba solo comprobaba que presupuesto.sh no fallara. Nada de
+# lo que decide estaba probado, y así llegó a producción un aviso que no salía en 19
+# de cada 20 rondas con llamadas en paralelo. Techo 3, estado desechable.
+printf '\n%s\n' "El presupuesto: los dos modos"
+presupuesto() {  # presupuesto <modo> <evento json> -> salida del hook
+  printf '%s' "$2" | IAGENCY_ESTADO="$TMP_PRUEBA/estado" IAGENCY_MAX_HERRAMIENTAS=3 \
+    IAGENCY_MODO="$1" bash "$DIR/presupuesto.sh" 2>&1
+}
+BLOQUEOS=0; AVISADAS=0
+for i in 1 2 3 4 5 6; do
+  S="$(presupuesto atendido '{"session_id":"prueba-atendido"}')"
+  printf '%s' "$S" | grep -q '"decision"' && BLOQUEOS=$((BLOQUEOS+1))
+  printf '%s' "$S" | grep -q 'Presupuesto:' && AVISADAS=$((AVISADAS+1))
+done
+if [ "$BLOQUEOS" -eq 0 ] && [ "$AVISADAS" -gt 0 ] && printf '%s' "$S" | grep -q '6 llamadas'; then
+  verde "atendido: 6 llamadas con techo 3, ningún bloqueo, $AVISADAS avisos con el número real"
+else
+  rojo "atendido: $BLOQUEOS bloqueos y $AVISADAS avisos en 6 llamadas con techo 3 (esperado: 0 bloqueos, avisos con el número real)"
+fi
+
+DECISIONES=""
+for i in 1 2 3 4; do
+  S="$(presupuesto desatendido '{"session_id":"prueba-desatendido"}')"
+  if printf '%s' "$S" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"'; then DECISIONES="$DECISIONES B"; else DECISIONES="$DECISIONES -"; fi
+done
+if [ "$DECISIONES" = " - - - B" ]; then
+  verde "desatendido: pasan las llamadas 1-3 y la 4 se bloquea"
+else
+  rojo "desatendido con techo 3, llamadas 1-4:$DECISIONES (esperado: - - - B)"
+fi
+
+# Un aviso que cae en la llamada de un subagente entra en el contexto del SUBAGENTE,
+# no en el del principal: medido con una sesión real. Tiene que quedar pendiente y
+# llegarle al principal en su siguiente llamada.
+presupuesto atendido '{"session_id":"prueba-sub"}' >/dev/null
+presupuesto atendido '{"session_id":"prueba-sub","agent_id":"a1","agent_type":"analista"}' >/dev/null
+presupuesto atendido '{"session_id":"prueba-sub","agent_id":"a1","agent_type":"analista"}' >/dev/null
+S="$(presupuesto atendido '{"session_id":"prueba-sub"}')"
+if printf '%s' "$S" | grep -q 'subagente analista'; then
+  verde "un aviso nacido en un subagente le llega al agente principal"
+else
+  rojo "el aviso nacido en un subagente NO le llegó al agente principal"
+fi
+
+# El aviso no se puede saltar: seis llamadas en paralelo con techo 3 tienen que dejar
+# al menos un aviso, y ningún nivel repetido.
+for i in 1 2 3 4 5 6; do
+  presupuesto atendido '{"session_id":"prueba-paralelo"}' > "$TMP_PRUEBA/paralelo-$i" &
+done
+wait
+# Se mira solo additionalContext: el mismo texto va también en systemMessage, y
+# contar el JSON crudo lo contaría dos veces.
+CONTEXTOS="$(cat "$TMP_PRUEBA"/paralelo-* | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)"
+AVISOS_P="$(printf '%s\n' "$CONTEXTOS" | grep -c 'Presupuesto:')"
+REPES="$(printf '%s\n' "$CONTEXTOS" | grep -o 'el [0-9]* %' | sort | uniq -d | wc -l | tr -d ' ')"
+if [ "$AVISOS_P" -gt 0 ] && [ "$REPES" -eq 0 ]; then
+  verde "seis llamadas en paralelo: $AVISOS_P avisos, ningún nivel repetido"
+else
+  rojo "seis llamadas en paralelo: $AVISOS_P avisos, $REPES niveles repetidos"
+fi
+
 SALIDA="$(IAGENCY_WORKTREE="$TMP_PRUEBA/repo" IAGENCY_AUDIT_DIR="$TMP_PRUEBA/aud" bash "$DIR/auditar-sesion.sh" 2>&1)"
 CODIGO=$?
 if [ $CODIGO -ne 0 ]; then

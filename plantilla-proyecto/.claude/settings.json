@@ -10,7 +10,12 @@
     "cualquier máquina. El límite real lo ponen blockReadsOutsideWorkingDirectories y",
     "la lista deny. No hay reglas Write(...): Edit(...) cubre todas las herramientas",
     "que escriben archivos, y Write(...) solo genera un aviso al arrancar.",
-    "Ningún agente hace push: git push está en deny sin excepciones."
+    "Ningún agente hace push: git push está en deny sin excepciones.",
+    "IAGENCY_MODO 'atendido': el presupuesto de herramientas avisa y NUNCA corta; el",
+    "PM es el freno. 'desatendido' corta en el techo: úsalo solo cuando nadie mire.",
+    "IAGENCY_MAX_HERRAMIENTAS es un número A CALIBRAR, no una verdad: el 400 se puso sin",
+    "medir. Cada aviso dice cuántas llamadas lleva la sesión, subagentes incluidos;",
+    "anótalos y ajusta el techo con esos datos."
   ],
 
   "permissions": {
@@ -157,6 +162,7 @@
 
   "env": {
     "IAGENCY_ENTORNO": "pruebas",
+    "IAGENCY_MODO": "atendido",
     "IAGENCY_MAX_HERRAMIENTAS": "400"
   },
 
