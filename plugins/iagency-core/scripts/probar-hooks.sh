@@ -39,8 +39,11 @@ DIR="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 OK=0
 MAL=0
 
-verde()  { printf '  \033[32mOK\033[0m    %s\n' "$1"; OK=$((OK+1)); }
-rojo()   { printf '  \033[31mFALLA\033[0m %s\n' "$1"; MAL=$((MAL+1)); }
+AVISOS=0
+
+verde()    { printf '  \033[32mOK\033[0m    %s\n' "$1"; OK=$((OK+1)); }
+rojo()     { printf '  \033[31mFALLA\033[0m %s\n' "$1"; MAL=$((MAL+1)); }
+amarillo() { printf '  \033[33mAVISO\033[0m %s\n' "$1"; AVISOS=$((AVISOS+1)); }
 
 printf '\n%s\n' "==================================================="
 printf '%s\n'   "  Prueba de humo de los guardarraíles"
@@ -141,21 +144,106 @@ fi
 
 # --- 6. Que los hooks de after no rompan el turno ----------------------------
 printf '\n%s\n' "Los hooks posteriores no deben romper nada"
-for s in presupuesto.sh auditar-sesion.sh; do
-  SALIDA="$(printf '%s' '{"tool_name":"Bash"}' | bash "$DIR/$s" 2>&1)"
-  CODIGO=$?
-  if [ $CODIGO -ne 0 ]; then
-    rojo "$s salió con código $CODIGO"
-    printf '        %s\n' "$(printf '%s' "$SALIDA" | head -3)"
+# La auditoría corre contra un repositorio de prueba desechable y escribe en una
+# carpeta desechable: así no depende de dónde se lance esta prueba ni ensucia el
+# directorio real de auditorías.
+TMP_PRUEBA="$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}/iagency-prueba-$$")"
+mkdir -p "$TMP_PRUEBA/repo" "$TMP_PRUEBA/no-repo"
+git -C "$TMP_PRUEBA/repo" init -q 2>/dev/null
+
+SALIDA="$(printf '%s' '{"tool_name":"Bash"}' | bash "$DIR/presupuesto.sh" 2>&1)"
+CODIGO=$?
+if [ $CODIGO -ne 0 ]; then
+  rojo "presupuesto.sh salió con código $CODIGO"
+  printf '        %s\n' "$(printf '%s' "$SALIDA" | head -3)"
+else
+  verde "presupuesto.sh se ejecuta sin fallar"
+fi
+
+SALIDA="$(IAGENCY_WORKTREE="$TMP_PRUEBA/repo" IAGENCY_AUDIT_DIR="$TMP_PRUEBA/aud" bash "$DIR/auditar-sesion.sh" 2>&1)"
+CODIGO=$?
+if [ $CODIGO -ne 0 ]; then
+  rojo "auditar-sesion.sh salió con código $CODIGO sobre un repositorio"
+  printf '        %s\n' "$(printf '%s' "$SALIDA" | head -3)"
+else
+  verde "auditar-sesion.sh audita un repositorio sin fallar"
+fi
+
+# Fuera de un repositorio tiene que NEGARSE, decirlo, y hacerlo enseguida. El modo
+# de fallo que esto caza es el barrido del disco entero que parecía un cuelgue.
+SALIDA="$(IAGENCY_WORKTREE="$TMP_PRUEBA/no-repo" IAGENCY_AUDIT_DIR="$TMP_PRUEBA/aud" bash "$DIR/auditar-sesion.sh" 2>&1)"
+CODIGO=$?
+if [ $CODIGO -ne 0 ] && printf '%s' "$SALIDA" | grep -q 'NO realizada'; then
+  verde "auditar-sesion.sh se niega fuera de un repositorio, y lo dice"
+else
+  rojo "auditar-sesion.sh NO se negó fuera de un repositorio (código $CODIGO) — barrería lo que encuentre"
+fi
+rm -rf "$TMP_PRUEBA" 2>/dev/null
+
+# --- 7. El sandbox: ¿está de verdad, o solo en la configuración? --------------
+# La plantilla lleva sandbox.failIfUnavailable en false desde la 1.4.0: con true, un
+# proyecto nuevo no arrancaba en Windows, que es la máquina principal del PM. El
+# precio es que, donde el sandbox no puede levantarse, Claude Code avisa UNA vez al
+# arrancar y corre los comandos SIN sandbox. Esta sección existe para que esa capa
+# ausente se vea en cada máquina, no solo en un aviso que pasa de largo.
+#
+# Es AVISO y no FALLA a propósito: en Windows nativo sería rojo para siempre, y una
+# prueba que siempre está en rojo enseña a ignorar el rojo. El aviso no se apaga
+# hasta que la capa exista, y el resumen final lo cuenta aparte.
+#
+# Mide dos cosas distintas. Los requisitos de la plataforma se miden siempre. Si la
+# capa está ACTIVA solo se puede medir desde dentro de una sesión de Claude Code
+# (CLAUDECODE=1): no hay variable documentada que lo diga, así que se prueba lo que
+# el sandbox hace —denegar la escritura fuera del proyecto— en vez de suponerlo.
+printf '\n%s\n' "El sandbox de Claude Code"
+SO="$(uname -s 2>/dev/null)"
+case "$SO" in
+  Darwin)
+    if command -v sandbox-exec >/dev/null 2>&1; then
+      verde "macOS: Seatbelt disponible (sandbox-exec)"
+    else
+      amarillo "macOS sin sandbox-exec: el sandbox no puede levantarse en esta máquina"
+    fi ;;
+  Linux)
+    if grep -qi microsoft /proc/version 2>/dev/null && ! grep -qi wsl2 /proc/version 2>/dev/null; then
+      amarillo "WSL1: el sandbox no está soportado. Los comandos de los agentes corren SIN sandbox; usa WSL2"
+    else
+      FALTAN=""
+      command -v bwrap >/dev/null 2>&1 || FALTAN="$FALTAN bubblewrap"
+      command -v socat >/dev/null 2>&1 || FALTAN="$FALTAN socat"
+      if [ -z "$FALTAN" ]; then
+        verde "Linux/WSL2: bubblewrap y socat disponibles"
+      else
+        amarillo "faltan:$FALTAN — el sandbox no puede levantarse y los comandos corren SIN él (apt install$FALTAN)"
+      fi
+    fi ;;
+  MINGW*|MSYS*|CYGWIN*)
+    amarillo "Windows nativo: el sandbox de Claude Code no está soportado aquí (sí en WSL2). Los comandos de los agentes corren SIN sandbox; la contención es solo el guardarraíl y las reglas de permisos" ;;
+  *)
+    amarillo "plataforma no reconocida ($SO): no se sabe si el sandbox puede levantarse" ;;
+esac
+
+if [ "${CLAUDECODE:-}" = "1" ]; then
+  SONDA="${HOME:-/nonexistent}/.iagency-sonda-sandbox-$$"
+  if ( : > "$SONDA" ) 2>/dev/null; then
+    rm -f "$SONDA" 2>/dev/null
+    amarillo "sesión actual: se pudo escribir fuera del proyecto — el sandbox NO está activo en esta sesión"
   else
-    verde "$s se ejecuta sin fallar"
+    verde "sesión actual: escribir fuera del proyecto se deniega — el sandbox está activo"
   fi
-done
+else
+  printf '  %s\n' "(fuera de una sesión de Claude Code: se miden los requisitos, no si la capa"
+  printf '  %s\n' " está activa. Para eso, pídele a un agente que corra este mismo script.)"
+fi
 
 # --- Resultado ---------------------------------------------------------------
 printf '\n%s\n' "==================================================="
-printf '  Bien: %s   ·   Mal: %s\n' "$OK" "$MAL"
+printf '  Bien: %s   ·   Mal: %s   ·   Avisos: %s\n' "$OK" "$MAL" "$AVISOS"
 printf '%s\n' "==================================================="
+if [ "$AVISOS" -gt 0 ]; then
+  printf '\n%s\n' "Hay capas de protección AUSENTES en esta máquina (ver AVISO arriba)."
+  printf '%s\n'   "Los agentes trabajan con menos contención de la que la plantilla declara."
+fi
 if [ "$MAL" -gt 0 ]; then
   printf '\n%s\n' "Hay guardarraíles que no están funcionando en esta máquina."
   printf '%s\n'   "Mientras esto falle, los agentes trabajan SIN la protección que"

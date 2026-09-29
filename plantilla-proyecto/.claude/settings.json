@@ -152,7 +152,7 @@
       ]
     },
     "autoAllowBashIfSandboxed": true,
-    "failIfUnavailable": true
+    "failIfUnavailable": false
   },
 
   "env": {

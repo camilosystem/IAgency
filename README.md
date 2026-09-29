@@ -76,9 +76,8 @@ Y después sigue, uno por uno, los pasos que imprime al terminar.
 
 | Agente | Qué hace | Modelo sugerido |
 |---|---|---|
-| `supervisor` | Único que habla con el PM humano. Encuadra, reparte, verifica, reporta | Opus |
+| `arquitecto` | Punto de entrada y único que habla con el PM humano. Única autoridad del contrato. Encuadra, diseña, reparte, verifica, reporta | Opus |
 | `analista` | Convierte negocio en especificación verificable | Sonnet |
-| `arquitecto` | Estructura, contratos, ADR, plan de implementación | Opus |
 | `dev-backend` | API, servicios, integraciones con ERP | Sonnet |
 | `dev-frontend` | Pantallas, componentes, estado | Sonnet |
 | `dev-datos` | Modelo de datos, vistas SQL, ETL, reportes, BI | Sonnet |
@@ -94,7 +93,7 @@ Dos reglas sostienen todo lo demás:
 - **Quien escribe no aprueba.** `qa` y `revisor` no pueden editar archivos. Es una
   restricción del propio agente, no una promesa.
 - **Un archivo, un dueño.** Dos agentes nunca editan el mismo archivo a la vez. El
-  supervisor lo garantiza al repartir; los worktrees lo hacen físico.
+  arquitecto lo garantiza al repartir; los worktrees lo hacen físico.
 
 ---
 
@@ -130,7 +129,7 @@ de tener cero confirmaciones sin perder las reglas.
 > cliente. Si `dontAsk` te deja corto, **amplía la lista `allow`** — no cambies el modo.
 
 Encima de eso, los hooks de `plugins/iagency-core/scripts/` bloquean lo irreversible
-(borrado masivo, push a `main`, reescritura de historia, escritura sobre puntos de
+(borrado masivo, cualquier `git push` —el push lo hace el PM—, reescritura de historia, escritura sobre puntos de
 persistencia, descargar-y-ejecutar, escrituras SQL fuera de pruebas) y cortan al agente
 que se atasca cuando agota su presupuesto de herramientas.
 
@@ -188,7 +187,7 @@ contenedor efímero por cada una, recoge el informe de entrega y deja un resumen
    Un agente autónomo con acceso de escritura al ERP de un cliente es un riesgo que
    ninguna mitigación compensa.
 
-5. **El PM humano decide.** El supervisor le lleva preguntas con opciones y
+5. **El PM humano decide.** El arquitecto le lleva preguntas con opciones y
    consecuencias, no problemas técnicos. Si el PM tiene que entender el código para
    responder, la pregunta está mal formulada.
 

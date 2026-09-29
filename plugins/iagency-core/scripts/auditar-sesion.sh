@@ -17,6 +17,33 @@ AREA="${IAGENCY_WORKTREE:-$PWD}"
 # directorio propio, fuera del área de trabajo; se puede redirigir con
 # IAGENCY_AUDIT_DIR o pasando la ruta como primer argumento.
 DESTINO="${IAGENCY_AUDIT_DIR:-${HOME:-/tmp}/.iagency/auditorias}"
+mkdir -p "$DESTINO" 2>/dev/null || true
+
+# Solo se audita un repositorio de git, y se audita entero desde su raíz. Mordió dos
+# veces: una sesión que arrancó en la carpeta personal lanzó find y grep -r sobre el
+# disco entero —OneDrive incluido— y el cierre parecía colgado. El área de trabajo de
+# un agente SIEMPRE es un repositorio; si no lo es, algo está mal, y barrer en
+# silencio lo tapa. Se niega, lo dice, y deja constancia en el directorio de
+# auditorías para que la negativa no se pierda con la sesión.
+#
+# La carpeta personal se rechaza aunque sea un repositorio: un `git init` en `~`
+# convertiría la comprobación de arriba en el mismo barrido del disco.
+RAIZ="$(git -C "$AREA" rev-parse --show-toplevel 2>/dev/null || true)"
+MOTIVO=""
+if [ -z "$RAIZ" ]; then
+  MOTIVO="\`$AREA\` no es un repositorio de git."
+elif [ -n "${HOME:-}" ] && [ "$(cd "$RAIZ" && pwd -P)" = "$(cd "$HOME" && pwd -P)" ]; then
+  MOTIVO="la raíz del repositorio es la carpeta personal (\`$RAIZ\`)."
+fi
+if [ -n "$MOTIVO" ]; then
+  AVISO="Auditoría NO realizada: $MOTIVO El área de trabajo de un agente siempre es un repositorio; si la sesión arrancó fuera de uno, eso es lo que hay que revisar. Para auditar a mano: IAGENCY_WORKTREE=/ruta/al/repo bash auditar-sesion.sh"
+  printf '%s\n' "$AVISO" >&2
+  printf '# Auditoría NO realizada — %s\n\n%s\n' "$(date -Is)" "$AVISO" \
+    > "$DESTINO/no-auditado-$(date +%Y%m%d-%H%M%S).md" 2>/dev/null || true
+  exit 1
+fi
+AREA="$RAIZ"
+
 SALIDA="${1:-$DESTINO/$(basename "$AREA")-$(date +%Y%m%d-%H%M%S).md}"
 mkdir -p "$(dirname "$SALIDA")"
 
@@ -62,7 +89,10 @@ mkdir -p "$(dirname "$SALIDA")"
 
   echo "## 5. Comandos ejecutados en la sesión"
   echo '```'
-  tail -200 "${IAGENCY_AUDIT_LOG:-/var/log/iagency/comandos.log}" 2>/dev/null || echo "sin registro"
+  # El mismo valor por defecto que guard-bash.sh, que es quien escribe el registro.
+  # Hasta la 1.3.0 aquí seguía /var/log/iagency: el guard escribía en $HOME desde
+  # la 1.1.2 y esta sección decía "sin registro" siempre.
+  tail -200 "${IAGENCY_AUDIT_LOG:-${IAGENCY_LOG_DIR:-${HOME:-/tmp}/.iagency/logs}/comandos.log}" 2>/dev/null || echo "sin registro"
   echo '```'
   echo
 

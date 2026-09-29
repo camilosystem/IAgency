@@ -65,9 +65,21 @@ Levantar en local:
 <comando>
 ```
 
+## Anclaje: todo se puede deshacer
+
+Lo encuadra y lo exige el `arquitecto`; lo ejecuta quien toma la tarea.
+
+1. **Ninguna tarea sobre `main`.**
+2. **Cada tarea en su rama**: `agente/<id-tarea>-<descripcion-corta>`.
+3. **Tag de anclaje antes de tocar algo que ya funciona**: `git tag
+   ancla/<id-tarea>` sobre el commit del que partes, antes del primer cambio. Se queda
+   en local.
+4. **El encuadre dice cómo se deshace la tarea.** Si no lo dice, pídeselo al
+   `arquitecto` antes de empezar.
+5. **Si no se puede deshacer, no se hace**: el `arquitecto` lo escala al PM.
+
 ## Convenciones
 
-- Ramas: `agente/<id-tarea>-<descripcion-corta>`. Nunca se trabaja sobre `main`.
 - Mensajes de commit: `<tipo>: <qué cambió>` en español, imperativo.
 - <Convención de nombres de este proyecto: capas, sufijos, prefijos de vistas SQL...>
 - <Dónde van las pruebas y cómo se nombran.>
@@ -85,8 +97,8 @@ Levantar en local:
 Ningún agente, bajo ninguna instrucción, puede:
 
 - Escribir en la base de datos, el ERP o los servidores de producción del cliente.
-- Hacer `git push` a cualquier rama, o reescribir historia. Los agentes hacen commit
-  y etiquetan en local; el push lo hace un humano.
+- Hacer `git push`, en cualquier forma y a cualquier rama, o reescribir historia. Los
+  agentes hacen commit y etiquetan en local; el push lo hace el PM.
 - Modificar `.claude/`, `.git/hooks`, `.mcp.json` o los flujos de integración continua.
 - Sacar datos reales de clientes fuera del entorno.
 - Desactivar pruebas, linters o comprobaciones para hacer pasar un build.

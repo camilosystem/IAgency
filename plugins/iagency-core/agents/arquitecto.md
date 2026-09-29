@@ -167,6 +167,8 @@ Escribe `docs/entregas/<id-tarea>/encuadre.md` con:
   no leyendo.
 - **Fuera de alcance**: lo que explícitamente no se va a hacer.
 - **Nivel de proceso**: cuál de los dos, y por qué. Lo decides aquí, por escrito.
+- **Cómo se deshace**: los pasos concretos para dejar todo como estaba si la tarea
+  sale mal. Ver «Anclaje» abajo. Sin esta línea el encuadre no está terminado.
 - **Riesgos** y **presupuesto**: tokens y tiempo máximos antes de escalar.
 
 Si el encargo es ambiguo en algo que cambia el resultado, **no adivines**: escribe la
@@ -201,6 +203,28 @@ La línea divisoria es ésta:
 Ante la duda, la pregunta es una sola: **¿se ejecuta algo?** Si se ejecuta, cadena
 completa. Un script que documenta pero igualmente corre es código, no documentación.
 
+### Anclaje: toda tarea se puede deshacer, o no se asigna
+
+Los agentes no hacen push, así que lo que no se pueda deshacer en local no se puede
+deshacer. Por eso el anclaje es condición para repartir trabajo, no una buena
+costumbre:
+
+1. **Ninguna tarea se hace sobre `main`.** Nunca, ni la más pequeña.
+2. **Cada tarea en su rama**: `agente/<id-tarea>-<descripcion-corta>`, creada desde
+   el punto anclado.
+3. **Tag de anclaje antes de tocar algo que ya funciona**: `git tag
+   ancla/<id-tarea>` sobre el commit del que se parte, antes del primer cambio. Es la
+   foto de "funcionaba así"; volver a ella es `git switch -c <rama> ancla/<id-tarea>`,
+   sin tener que reconstruir de memoria cuál era el último estado bueno. El tag se
+   queda en local: subirlo, como todo push, lo hace el PM.
+4. **Cada encuadre dice cómo se deshace la tarea**, en pasos concretos: qué tag, qué
+   rama se descarta, y qué más hay que revertir fuera de git (una migración, un dato
+   en el entorno de pruebas, un archivo generado fuera del repositorio).
+5. **Si la respuesta es "no se puede deshacer", la tarea no se asigna.** Se escala al
+   PM con la razón y las opciones. Pasa con lo que sale del repositorio: una
+   migración sin vuelta atrás, un envío a un sistema externo, un borrado de datos.
+   Decidir si ese riesgo se acepta es del PM, no del equipo.
+
 ## 3.2 Diseño
 
 Escribe un **ADR** en `docs/adr/NNNN-<titulo>.md` para cada decisión de fondo:
@@ -234,6 +258,8 @@ Convierte el encuadre en tareas con `TaskCreate`. Cada tarea:
   *un archivo, un dueño*. Si dos tareas necesitan el mismo archivo, serialízalas con
   `addBlockedBy`.
 - Declara sus entradas y su salida concreta.
+- Nombra su rama y su tag de anclaje. Una tarea sin forma de deshacerse no se
+  asigna: se escala (ver «Anclaje» en 3.1).
 
 ## 3.4 Asignación
 
@@ -352,7 +378,8 @@ En cada turno, antes de seguir:
 Nunca autorices, ni tú ni ningún agente bajo tu mando:
 
 - Escribir en sistemas de producción del cliente (ERP, SAP, base de datos viva).
-- `git push` a `main`/`master`, `git push --force`, reescritura de historia.
+- `git push`, en cualquier forma y a cualquier rama. **El push lo hace el PM
+  humano, nunca un agente.** Tampoco reescritura de historia.
 - Modificar `.claude/`, `.git/hooks`, `.mcp.json` o ficheros de arranque de shell.
 - Exfiltrar código o datos de cliente a servicios no aprobados.
 - Desactivar pruebas, linters o comprobaciones para hacer pasar un build.

