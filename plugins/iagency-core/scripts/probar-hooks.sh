@@ -166,9 +166,11 @@ fi
 # de cada 20 rondas con llamadas en paralelo. Techo 3, estado desechable.
 printf '\n%s\n' "El presupuesto: los dos modos"
 presupuesto() {  # presupuesto <modo> <evento json> -> salida del hook
+  # Techo por agente 3; el de sesión, el que traiga MAX_SESION o el valor por defecto.
   printf '%s' "$2" | IAGENCY_ESTADO="$TMP_PRUEBA/estado" IAGENCY_MAX_HERRAMIENTAS=3 \
-    IAGENCY_MODO="$1" bash "$DIR/presupuesto.sh" 2>&1
+    IAGENCY_MAX_SESION="${MAX_SESION:-}" IAGENCY_MODO="$1" bash "$DIR/presupuesto.sh" 2>&1
 }
+corta() { printf '%s' "$1" | grep -q '"decision"[[:space:]]*:[[:space:]]*"block"'; }
 BLOQUEOS=0; AVISADAS=0
 for i in 1 2 3 4 5 6; do
   S="$(presupuesto atendido '{"session_id":"prueba-atendido"}')"
@@ -199,11 +201,54 @@ presupuesto atendido '{"session_id":"prueba-sub"}' >/dev/null
 presupuesto atendido '{"session_id":"prueba-sub","agent_id":"a1","agent_type":"analista"}' >/dev/null
 presupuesto atendido '{"session_id":"prueba-sub","agent_id":"a1","agent_type":"analista"}' >/dev/null
 S="$(presupuesto atendido '{"session_id":"prueba-sub"}')"
-if printf '%s' "$S" | grep -q 'subagente analista'; then
+if printf '%s' "$S" | grep -q 'Llegó durante el trabajo del subagente analista'; then
   verde "un aviso nacido en un subagente le llega al agente principal"
 else
   rojo "el aviso nacido en un subagente NO le llegó al agente principal"
 fi
+
+# Techo por agente (1.6.0): el agente que se pasa se corta, y los demás no. Techo de
+# sesión alto para que no intervenga.
+SUB1='{"session_id":"prueba-agente","agent_id":"a1","agent_type":"analista"}'
+SUB2='{"session_id":"prueba-agente","agent_id":"a2","agent_type":"qa"}'
+PRIN='{"session_id":"prueba-agente"}'
+DECISIONES=""
+for i in 1 2 3 4; do
+  if corta "$(MAX_SESION=100 presupuesto desatendido "$SUB1")"; then DECISIONES="$DECISIONES B"; else DECISIONES="$DECISIONES -"; fi
+done
+OTROS=""
+corta "$(MAX_SESION=100 presupuesto desatendido "$PRIN")" && OTROS="$OTROS principal"
+corta "$(MAX_SESION=100 presupuesto desatendido "$SUB2")" && OTROS="$OTROS qa"
+if [ "$DECISIONES" = " - - - B" ] && [ -z "$OTROS" ]; then
+  verde "techo por agente: el analista se corta en su llamada 4; el principal y qa siguen"
+else
+  rojo "techo por agente: analista 1-4:$DECISIONES (esperado - - - B); cortados además:${OTROS:- ninguno} (esperado ninguno)"
+fi
+
+# Techo de sesión (1.6.0, solo desatendido): corta aunque NINGÚN agente haya llegado
+# al suyo. Techo por agente 3, de sesión 5; tres agentes con 2 llamadas cada uno.
+SUB1='{"session_id":"prueba-sesion","agent_id":"a1","agent_type":"analista"}'
+SUB2='{"session_id":"prueba-sesion","agent_id":"a2","agent_type":"qa"}'
+PRIN='{"session_id":"prueba-sesion"}'
+DECISIONES=""
+for E in "$PRIN" "$PRIN" "$SUB1" "$SUB1" "$SUB2" "$SUB2"; do
+  if corta "$(MAX_SESION=5 presupuesto desatendido "$E")"; then DECISIONES="$DECISIONES B"; else DECISIONES="$DECISIONES -"; fi
+done
+CORTES_ATENDIDO=0
+for E in "$PRIN" "$PRIN" "$SUB1" "$SUB1" "$SUB2" "$SUB2" "$PRIN" "$SUB1"; do
+  corta "$(MAX_SESION=5 presupuesto atendido "${E/prueba-sesion/prueba-sesion-atendido}")" && CORTES_ATENDIDO=$((CORTES_ATENDIDO+1))
+done
+if [ "$DECISIONES" = " - - - - - B" ] && [ "$CORTES_ATENDIDO" -eq 0 ]; then
+  verde "techo de sesión: corta en la llamada 6 de la sesión sin que ningún agente pase de 2; en atendido no existe"
+else
+  rojo "techo de sesión 5, llamadas 1-6 de tres agentes:$DECISIONES (esperado - - - - - B), o atendido cortó"
+fi
+
+# LÍMITE DECLARADO: no es un OK ni una FALLA, porque no se ha medido. Se imprime en
+# cada máquina para que nadie dé por bueno el modo desatendido sin haberlo leído.
+printf '  \033[33mLÍMITE\033[0m %s\n' "el techo por agente NO está medido para subagentes anidados ni en segundo"
+printf '         %s\n' "plano. Si ahí no llega el agent_id, un bucle no se corta por agente. El modo"
+printf '         %s\n' "desatendido no se da por bueno hasta medirlos (cabecera de presupuesto.sh)."
 
 # El aviso no se puede saltar: seis llamadas en paralelo con techo 3 tienen que dejar
 # al menos un aviso, y ningún nivel repetido.

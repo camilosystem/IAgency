@@ -13,9 +13,11 @@
     "Ningún agente hace push: git push está en deny sin excepciones.",
     "IAGENCY_MODO 'atendido': el presupuesto de herramientas avisa y NUNCA corta; el",
     "PM es el freno. 'desatendido' corta en el techo: úsalo solo cuando nadie mire.",
-    "IAGENCY_MAX_HERRAMIENTAS es un número A CALIBRAR, no una verdad: el 400 se puso sin",
-    "medir. Cada aviso dice cuántas llamadas lleva la sesión, subagentes incluidos;",
-    "anótalos y ajusta el techo con esos datos."
+    "IAGENCY_MAX_HERRAMIENTAS es el techo POR AGENTE (el principal y cada subagente, por",
+    "separado) y es un número A CALIBRAR, no una verdad: el 400 se puso sin medir. Cada",
+    "aviso dice cuántas llamadas lleva ese agente y el total de la sesión; anótalos y",
+    "ajusta el techo con esos datos. El techo de sesión (IAGENCY_MAX_SESION, por defecto",
+    "5 veces el anterior) solo actúa en desatendido, que aún NO está validado."
   ],
 
   "permissions": {
