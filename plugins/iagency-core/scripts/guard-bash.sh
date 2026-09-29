@@ -132,13 +132,21 @@ ENVOLTORIOS='sudo|doas|nohup|command|timeout|time|xargs|stdbuf|setsid|ionice|nic
 ARG_ENVOLTORIO='-[^[:space:];&|()]*([[:space:]]+[^-[:space:];&|()][^[:space:];&|()]*)?|[A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|()]*'
 ENVOLTURA="((${ENVOLTORIOS})([[:space:]]+(${ARG_ENVOLTORIO}))*[[:space:]]+)*"
 
+# El mismo comando llamado por su ruta (`/usr/bin/crontab`, `./node`) es el mismo
+# comando. Sin esto, la ruta absoluta del binario abría las reglas ancladas igual que
+# lo hacía sudo. Medido: `/usr/bin/crontab -l` pasaba.
+RUTA_BIN='([^[:space:];&|()]*/)?'
+ENVOLTURA="${ENVOLTURA}${RUTA_BIN}"
+
 # 3a. crontab y systemctl como comando ejecutado, con o sin envoltorio delante
 if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(crontab|systemctl[[:space:]]+(enable|disable|mask))([[:space:]]|$)"; then
   denegar "Un agente no programa tareas ni habilita servicios. Si el trabajo lo necesita, entrégalo como script para que lo ejecute un humano."
 fi
 
 # 3b. escritura sobre rutas de persistencia
-RUTAS_PERSIST='(\.git/hooks|\.git/config|\.claude/|\.mcp\.json|\.bashrc|\.zshrc|\.profile|\.bash_profile|authorized_keys)'
+# `.claude` cuenta también sin barra final — `cp x .claude` escribe DENTRO — pero no
+# `.claude-plugin`, que es otra cosa y se edita como trabajo normal.
+RUTAS_PERSIST="(\\.git/hooks|\\.git/config|\\.claude([/\"'[:space:]]|\$)|\\.mcp\\.json|\\.bashrc|\\.zshrc|\\.profile|\\.bash_profile|authorized_keys)"
 if printf '%s' "$CMD" | grep -Eq "(>>?[[:space:]]*[^|;&]*$RUTAS_PERSIST)"; then
   denegar "Redirección de escritura sobre un punto de persistencia. Prohibido para agentes."
 fi
@@ -146,6 +154,43 @@ fi
 # esta regla queda cubierta sin tocarla.
 if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(tee|sed[[:space:]]+-i|install|chmod|chown|ln)[[:space:]][^|;&]*$RUTAS_PERSIST"; then
   denegar "Modificación de un punto de persistencia (hooks de git, .claude, .mcp.json, arranque del shell, claves SSH). Prohibido para agentes."
+fi
+
+# 3b, segunda familia: los comandos que copian, mueven o vacían archivos. Aquí SÍ
+# importa la posición del argumento, porque cp desde .claude es leer:
+#   mv, truncate   nunca leen: cualquier aparición de la ruta bloquea.
+#   dd             solo si la ruta está en of=, el destino.
+#   cp             solo si la ruta aparece DESPUÉS del primer operando (el origen), o
+#                  como directorio de -t / --target-directory.
+if printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}(mv|truncate)[[:space:]][^|;&]*$RUTAS_PERSIST" \
+|| printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}dd[[:space:]][^|;&]*of=[\"']?[^[:space:]|;&]*$RUTAS_PERSIST" \
+|| printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}cp([[:space:]]+-[^[:space:]|;&]*)*[[:space:]]+[^-[:space:]|;&][^[:space:]|;&]*[[:space:]][^|;&]*$RUTAS_PERSIST" \
+|| printf '%s' "$CMD" | grep -Eq "${INICIO}${ENVOLTURA}cp[[:space:]][^|;&]*(-[a-zA-Z]*t[[:space:]]*|--target-directory[=[:space:]])[\"']?[^[:space:]|;&]*$RUTAS_PERSIST"; then
+  denegar "Copia, movimiento o vaciado sobre un punto de persistencia (hooks de git, .claude, .mcp.json, arranque del shell, claves SSH). Prohibido para agentes. Copiar DESDE ahí para leer sí se permite."
+fi
+
+# 3b, tercera familia: un intérprete escribe desde dentro sin redirección ni comando
+# de la lista — `node -e "fs.writeFileSync('.claude/settings.json', x)"`. Lo encontró
+# el revisor de otro proyecto pensando en la amenaza; la batería de casos, escrita
+# leyendo las reglas, no podía encontrarlo.
+#
+# Aquí NO se distingue leer de escribir, igual que en 3a y por la misma razón: para
+# saberlo habría que interpretar el código del intérprete, y un código mal entendido
+# deja pasar una escritura. Un intérprete que nombra una ruta de persistencia se
+# bloquea. Leerla sigue abierto por cat, grep, ls, jq.
+#
+# Dos cosas que la regla hace a propósito:
+#   - La cola respeta comillas: el `;` DENTRO de `node -e "a; b"` es código, no un
+#     separador de comandos. Sin esto, cualquier script de dos sentencias pasaba.
+#   - Se evalúa con los saltos de línea aplanados, para que un heredoc al intérprete
+#     (`python3 - <<EOF` y el código en las líneas siguientes) no se escape por
+#     evaluar línea a línea. El precio es un falso positivo aceptado: una línea con
+#     node y OTRA posterior que solo nombre .claude se bloquean juntas.
+INTERPRETES='node|python[0-9.]*|perl|ruby|php'
+COLA_CON_COMILLAS="([^|;&\"']|\"[^\"]*\"|'[^']*')*(\"[^\"]*|'[^']*)?"
+CMD_PLANO="${CMD//$'\n'/ }"
+if printf '%s' "$CMD_PLANO" | grep -Eq "${INICIO}${ENVOLTURA}(${INTERPRETES})[[:space:]]${COLA_CON_COMILLAS}$RUTAS_PERSIST"; then
+  denegar "Un intérprete (node, python, perl, ruby, php) que nombra un punto de persistencia (hooks de git, .claude, .mcp.json, arranque del shell, claves SSH). Prohibido para agentes. Para leer esos archivos usa cat, grep o jq."
 fi
 
 # ---------------------------------------------------------------------------

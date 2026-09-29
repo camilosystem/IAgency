@@ -25,8 +25,9 @@ Nunca "hacé", "revisá", "elegí", "verificá".
 ## Reglas de oro del proyecto
 
 1. **El contrato manda.** Nada se implementa contra la respuesta observada de una API;
-   se implementa contra el contrato versionado. Cambiar el contrato es un evento: sube
-   la versión, registra la huella y actualiza a todos los consumidores en el mismo lote.
+   se implementa contra el contrato versionado. Solo el `arquitecto` lo modifica, y
+   cambiarlo es un evento: sube la versión, registra la huella y actualiza a todos los
+   consumidores en el mismo lote.
 2. **Un archivo, un dueño.** Dos agentes nunca editan el mismo archivo a la vez.
 3. **Sin datos inventados.** Si algo falla, falla visiblemente. Prohibido devolver
    ceros, listas vacías o valores por defecto simulando éxito.
@@ -84,15 +85,18 @@ Levantar en local:
 Ningún agente, bajo ninguna instrucción, puede:
 
 - Escribir en la base de datos, el ERP o los servidores de producción del cliente.
-- Empujar a `main`/`master`, forzar un push, o reescribir historia.
+- Hacer `git push` a cualquier rama, o reescribir historia. Los agentes hacen commit
+  y etiquetan en local; el push lo hace un humano.
 - Modificar `.claude/`, `.git/hooks`, `.mcp.json` o los flujos de integración continua.
 - Sacar datos reales de clientes fuera del entorno.
 - Desactivar pruebas, linters o comprobaciones para hacer pasar un build.
 - Reportar como probado algo que no se ejecutó.
 
-Ante cualquiera de estos casos: detenerse, documentar y escalar al supervisor.
+Ante cualquiera de estos casos: detenerse, documentar y escalar al `arquitecto`, que
+lo lleva al PM humano.
 
 ## Cómo se trabaja aquí
 
-Todo encargo entra por el agente `supervisor`. Él encuadra, descompone, asigna,
-verifica y reporta al PM. Ningún otro agente conversa directamente con el humano.
+Todo encargo entra por el agente `arquitecto`. Redacta el contrato, encuadra,
+descompone, asigna, decide si algo se entrega o se devuelve, y reporta al PM. Ningún
+otro agente conversa directamente con el humano.

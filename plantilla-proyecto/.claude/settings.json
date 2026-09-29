@@ -5,16 +5,20 @@
     "solo; todo lo demás se deniega en silencio. Es la forma correcta de tener cero",
     "confirmaciones SIN perder los guardarraíles, a diferencia de bypassPermissions,",
     "que desactiva también las reglas deny.",
-    "Si un agente se queda corto, se AMPLÍA la lista allow — no se cambia el modo."
+    "Si un agente se queda corto, se AMPLÍA la lista allow — no se cambia el modo.",
+    "Read(/**) y Edit(/**): '/' se ancla a la raíz del proyecto, así que sirve en",
+    "cualquier máquina. El límite real lo ponen blockReadsOutsideWorkingDirectories y",
+    "la lista deny. No hay reglas Write(...): Edit(...) cubre todas las herramientas",
+    "que escriben archivos, y Write(...) solo genera un aviso al arrancar.",
+    "Ningún agente hace push: git push está en deny sin excepciones."
   ],
 
   "permissions": {
     "defaultMode": "dontAsk",
 
     "allow": [
-      "Read(//workspace/**)",
-      "Edit(//workspace/**)",
-      "Write(//workspace/**)",
+      "Read(/**)",
+      "Edit(/**)",
       "Glob(**)",
       "Grep(**)",
       "TodoWrite",
@@ -35,9 +39,7 @@
       "Bash(git worktree *)",
       "Bash(git fetch *)",
       "Bash(git pull *)",
-      "Bash(git push origin feature/*)",
-      "Bash(git push origin fix/*)",
-      "Bash(git push origin agente/*)",
+      "Bash(git tag *)",
 
       "Bash(dotnet build *)",
       "Bash(dotnet test *)",
@@ -91,10 +93,7 @@
       "Bash(mkfs*)",
       "Bash(dd *)",
       "Bash(chmod -R 777 *)",
-      "Bash(git push --force*)",
-      "Bash(git push -f*)",
-      "Bash(git push origin main*)",
-      "Bash(git push origin master*)",
+      "Bash(git push*)",
       "Bash(git reset --hard origin*)",
       "Bash(git filter-branch*)",
       "Bash(git config --global*)",
@@ -120,10 +119,7 @@
       "Edit(**/.git/hooks/**)",
       "Edit(**/.git/config)",
       "Edit(**/.devcontainer/**)",
-      "Edit(**/.github/workflows/**)",
-      "Write(**/.env)",
-      "Write(**/.claude/**)",
-      "Write(**/.git/hooks/**)"
+      "Edit(**/.github/workflows/**)"
     ],
 
     "additionalDirectories": [],
@@ -161,9 +157,7 @@
 
   "env": {
     "IAGENCY_ENTORNO": "pruebas",
-    "IAGENCY_MAX_HERRAMIENTAS": "400",
-    "IAGENCY_AUDIT_LOG": "/var/log/iagency/comandos.log",
-    "IAGENCY_ESTADO": "/var/lib/iagency"
+    "IAGENCY_MAX_HERRAMIENTAS": "400"
   },
 
   "extraKnownMarketplaces": {
